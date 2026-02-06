@@ -39,7 +39,7 @@
             width: 100vw !important; height: 100vh !important; 
             background-color: #ffffff !important; 
             color: #1e293b !important;
-            padding: 60px max(20px, calc(50vw - 400px)) !important; /* Center visually like A4 */
+            padding: 60px max(20px, calc(50vw - 400px)) !important; 
             font-size: 16pt !important; line-height: 1.6 !important; 
             border: none !important; border-radius: 0 !important; 
             overflow-y: auto !important;
@@ -210,7 +210,7 @@
                      <input type="text" id="editHN" class="w-full bg-transparent border-b border-slate-200 p-2 font-mono text-sm outline-none focus:border-medical-500 transition" placeholder="HN 1234567">
                 </div>
 
-                <!-- Color Coding -->
+                <!-- Color Coding (Tonal) -->
                 <div class="space-y-2">
                     <label class="text-[10px] font-bold text-slate-400 uppercase px-1">Patient Status Tag</label>
                     <div id="colorContainer" class="flex flex-wrap gap-2 px-1"></div>
@@ -240,13 +240,23 @@
                     </button>
                 </div>
 
-                <!-- Todo -->
+                <!-- Smart To-Do -->
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
                     <div class="flex justify-between items-center mb-3">
                         <h4 class="font-bold text-xs text-slate-500 uppercase"><i class="fa-solid fa-list-check mr-1"></i> To-Do List</h4>
                         <button onclick="addTodo()" class="w-6 h-6 rounded bg-white border border-slate-200 text-medical-600 flex items-center justify-center hover:shadow-sm"><i class="fa-solid fa-plus text-xs"></i></button>
                     </div>
                     <div id="todoContainer" class="space-y-2"></div>
+                    <datalist id="taskSuggestions">
+                        <option value="Follow Lab">
+                        <option value="Film Chest">
+                        <option value="D/C Summary">
+                        <option value="Family Meeting">
+                        <option value="Consult Cardio">
+                        <option value="Review Meds">
+                        <option value="Order CT Scan">
+                        <option value="Prepare OR">
+                    </datalist>
                 </div>
 
                 <div class="pt-4">
@@ -287,9 +297,9 @@
             {id: 'Rheumato', icon: 'fa-bone'}, {id: 'Skin', icon: 'fa-hand-dots'}
         ];
         
-        // Premium Tonal Palette
+        // Premium Tonal Palette (Grouped by hue)
         const COLORS = [
-            '#ffffff', 
+            '#ffffff', // White
             '#fecaca', '#fca5a5', '#f87171', // Red
             '#fed7aa', '#fdba74', '#fb923c', // Orange
             '#fef08a', '#fde047', '#facc15', // Yellow
@@ -365,7 +375,6 @@
                     document.getElementById('authOverlay').classList.add('hidden');
                     document.getElementById('appContainer').classList.remove('hidden');
                     fetchData().then(() => {
-                        // Force ward selector open on first load
                         changeWard(); 
                     });
                 } else { alert("Incorrect Password"); }
@@ -387,9 +396,9 @@
                 const listRes = await fetch(`${API_URL}?action=admin_list_users`);
                 const listJson = await listRes.json();
                 const promises = listJson.users.map(u => 
-                    fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'read', db: u, password: PASSWORD}) })
+                    fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'read', db: u.name, password: PASSWORD}) })
                     .then(r => r.json())
-                    .then(data => data.map(rec => ({...processRecord(rec), owner: u})))
+                    .then(data => data.map(rec => ({...processRecord(rec), owner: u.name})))
                     .catch(() => [])
                 );
                 const results = await Promise.all(promises);
@@ -520,12 +529,16 @@
         function exportBatch() {
             const items = records.filter(r => selectedIds.has(r.id));
             items.forEach(r => {
-                const fn = `${r.name || 'Patient'}_${r.hn || 'NoHN'}.txt`;
+                // Filename Format: Name_HN12345.txt
+                const safeName = (r.name || 'Patient').replace(/[^a-z0-9]/gi, '_');
+                const safeHN = (r.hn || 'NoHN').replace(/[^a-z0-9]/gi, '');
+                const fn = `${safeName}_HN${safeHN}.txt`;
+                
                 let txt = `Name: ${r.name}\nHN: ${r.hn}\nBed: ${r.bed_number}\nWard: ${r.ward}\n\n`;
                 txt += `DETAILS:\n${r.details || '-'}\n\n`;
                 if(r.todo_list.length) txt += `TODO:\n${r.todo_list.map(t => (t.done?'[x] ':'[ ] ') + t.text).join('\n')}`;
                 
-                const a = document.createElement('a');
+                const a = document.createElement("a");
                 a.href = window.URL.createObjectURL(new Blob([txt], {type: "text/plain"}));
                 a.download = fn;
                 a.click();
@@ -592,8 +605,7 @@
                 document.getElementById('editDetails').value = "";
                 setActiveColor('#ffffff');
                 toggleElement('btnDelete', false);
-                // Smart To-do Init
-                currentTodos = [{text: "Review Chart", done: false}, {text: "Physical Exam", done: false}, {text: "Write Orders", done: false}];
+                currentTodos = [{text: "", done: false}, {text: "", done: false}];
             }
             renderConsults();
             renderTodos();
@@ -629,10 +641,19 @@
             const div = document.getElementById('todoContainer');
             div.innerHTML = "";
             currentTodos.forEach((t, i) => {
-                div.innerHTML += `<div class="flex items-center gap-2 p-2 bg-white rounded border ${t.done ? 'border-green-200 bg-green-50' : 'border-slate-200'}"><input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo(${i})" class="accent-green-500"><input type="text" value="${t.text}" onblur="currentTodos[${i}].text=this.value" class="flex-1 bg-transparent outline-none text-xs ${t.done ? 'line-through text-green-600' : 'text-slate-700'}"><i class="fa-solid fa-xmark text-slate-300 cursor-pointer" onclick="removeTodo(${i})"></i></div>`;
+                // Added list attribute for smart suggestions
+                div.innerHTML += `<div class="flex items-center gap-2 p-2 bg-white rounded border ${t.done ? 'border-green-200 bg-green-50' : 'border-slate-200'}"><input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo(${i})" class="accent-green-500"><input type="text" value="${t.text}" placeholder="Add task..." list="taskSuggestions" onblur="currentTodos[${i}].text=this.value" id="todoInput-${i}" class="flex-1 bg-transparent outline-none text-xs ${t.done ? 'line-through text-green-600' : 'text-slate-700'}"><i class="fa-solid fa-xmark text-slate-300 cursor-pointer" onclick="removeTodo(${i})"></i></div>`;
             });
         }
-        function addTodo() { currentTodos.push({text:"New Task", done:false}); renderTodos(); }
+        function addTodo() { 
+            currentTodos.push({text:"", done:false}); 
+            renderTodos(); 
+            // SMART FOCUS on the new element
+            setTimeout(() => {
+                const newIdx = currentTodos.length - 1;
+                document.getElementById(`todoInput-${newIdx}`).focus();
+            }, 50);
+        }
         function removeTodo(i) { currentTodos.splice(i,1); renderTodos(); }
         function toggleTodo(i) { currentTodos[i].done = !currentTodos[i].done; renderTodos(); }
 
@@ -659,6 +680,9 @@
             let name = document.getElementById('editName').value.trim();
             if(!name) { const count = records.length + 1; name = `Patient_${String(count).padStart(3, '0')}`; }
 
+            // Filter out empty todos
+            const validTodos = currentTodos.filter(t => t.text.trim() !== "");
+
             const p = {
                 id: editingId || 'rec_' + Date.now(),
                 bed_number: document.getElementById('editBed').value,
@@ -668,12 +692,12 @@
                 details: document.getElementById('editDetails').value,
                 consult_units: JSON.stringify(activeConsults),
                 color_id: document.getElementById('colorContainer').dataset.selected || '#ffffff',
-                todo_list: JSON.stringify(currentTodos),
+                todo_list: JSON.stringify(validTodos),
                 is_discharged: currentDischarged
             };
 
             if (ROLE !== 'chief') {
-                const clean = {...p, consult_units: activeConsults, todo_list: currentTodos};
+                const clean = {...p, consult_units: activeConsults, todo_list: validTodos};
                 const idx = records.findIndex(r => r.id === p.id);
                 if(idx > -1) records[idx] = clean; else records.push(clean);
                 renderView();
@@ -692,7 +716,6 @@
         }
 
         function exportData() {
-            // Standard full list export
             const active = records.filter(r => r.ward === currentWard && !r.is_discharged);
             let txt = `WARD REPORT: ${currentWard}\nGenerated: ${new Date().toLocaleString()}\n\n`;
             active.sort((a,b) => parseInt(a.bed_number) - parseInt(b.bed_number));
