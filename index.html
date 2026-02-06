@@ -78,7 +78,6 @@
             <div class="space-y-4">
                 <div class="flex flex-col md:flex-row gap-4">
                     <input type="text" id="newDbName" placeholder="New Username (e.g. Res_Somsak)" class="flex-1 bg-slate-900/50 border border-slate-600 rounded-xl p-3.5 outline-none focus:border-blue-500 text-white transition placeholder:text-slate-500">
-                    <!-- REMOVED PASSWORD FIELD FOR CREATION -->
                     
                     <div class="flex gap-2 w-full md:w-auto">
                         <label class="cursor-pointer flex-1">
@@ -148,20 +147,6 @@
         </div>
     </div>
 
-    <!-- MAIN APP LOGIN (USER) -->
-    <div id="loginModal" class="fixed inset-0 bg-slate-950/90 z-50 hidden flex items-center justify-center backdrop-blur-sm">
-        <div class="bg-slate-900 p-8 rounded-2xl border border-slate-700 shadow-2xl w-full max-w-sm relative animate-fade-in">
-            <button onclick="closeLogin()" class="absolute top-4 right-4 text-slate-500 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
-            <div class="text-center mb-6">
-                <div id="loginIconContainer" class="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl text-blue-500 shadow-lg"><i class="fa-solid fa-hospital-user"></i></div>
-                <h3 class="text-white font-bold text-xl" id="loginTitle">Login</h3>
-                <p class="text-slate-400 text-xs mt-1" id="loginSubtitle">Enter password to access</p>
-            </div>
-            <input type="password" id="loginPass" class="w-full bg-slate-950 border border-slate-600 rounded-xl px-4 py-4 text-center text-lg text-white focus:border-blue-500 outline-none transition mb-4" placeholder="Password">
-            <button onclick="submitLogin()" id="btnLoginSubmit" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-xl font-bold transition shadow-lg">Access Database</button>
-        </div>
-    </div>
-
     <!-- DELETE AUTH MODAL -->
     <div id="deleteModal" class="fixed inset-0 bg-slate-950/90 z-[100] hidden flex items-center justify-center backdrop-blur-sm">
         <div class="bg-slate-900 p-8 rounded-2xl border border-slate-700 shadow-2xl w-96 relative">
@@ -196,9 +181,6 @@
         let adminSession = null; // { type: 'master'|'chief', key: '...', user: '...', pass: '...' }
         let pendingDeleteTarget = null;
         let pendingDeleteRole = null;
-        
-        // Track mode of login modal: 'login' or 'setup'
-        let loginMode = 'login'; 
 
         window.onload = loadDatabases;
 
@@ -369,92 +351,14 @@
             if(isEditMode) document.body.classList.add('admin-mode');
         }
 
-        // --- USER LOGIN ---
-        let selectedDb = null;
-        
-        async function promptLogin(dbName, role) {
-            selectedDb = dbName;
-            
-            // Check status first to see if setup is needed
-            document.body.style.cursor = 'wait';
-            try {
-                const res = await fetch(`${API_URL}?action=auth_check_status&db=${dbName}`);
-                const json = await res.json();
-                
-                document.getElementById('loginTitle').innerText = dbName;
-                document.getElementById('loginPass').value = '';
-                document.getElementById('loginModal').classList.remove('hidden');
-                document.getElementById('loginPass').focus();
-                
-                // Configure Modal based on status
-                if (json.status === 'setup_needed') {
-                    loginMode = 'setup';
-                    document.getElementById('loginSubtitle').innerText = "First time login: Create a password";
-                    document.getElementById('loginSubtitle').className = "text-emerald-400 text-xs mt-1 font-bold";
-                    document.getElementById('loginPass').placeholder = "Create New Password";
-                    document.getElementById('btnLoginSubmit').innerText = "Set Password & Login";
-                    document.getElementById('btnLoginSubmit').className = "w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-xl font-bold transition shadow-lg";
-                    document.getElementById('loginIconContainer').className = "w-16 h-16 bg-emerald-900/30 border border-emerald-500/50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl text-emerald-500 shadow-lg";
-                } else {
-                    loginMode = 'login';
-                    document.getElementById('loginSubtitle').innerText = role.toUpperCase();
-                    document.getElementById('loginSubtitle').className = "text-slate-400 text-xs mt-1";
-                    document.getElementById('loginPass').placeholder = "Enter Password";
-                    document.getElementById('btnLoginSubmit').innerText = "Access Database";
-                    document.getElementById('btnLoginSubmit').className = "w-full bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-xl font-bold transition shadow-lg";
-                    document.getElementById('loginIconContainer').className = "w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl text-blue-500 shadow-lg";
-                }
-            } catch(e) {
-                alert("Connection Check Failed");
-            } finally {
-                document.body.style.cursor = 'default';
+        // Direct App Entry (Skips Password Modal here, App.html handles it)
+        function enterApp(dbName, role) { 
+            if(!isEditMode) {
+                // Directly redirect to the app. 
+                // The App itself (app.html) will check if password is set or required.
+                window.location.href = `${APP_URL}?db=${encodeURIComponent(dbName)}&role=${role}`;
             }
         }
-        
-        function closeLogin() { document.getElementById('loginModal').classList.add('hidden'); }
-        
-        async function submitLogin() {
-            const pwd = document.getElementById('loginPass').value;
-            const btn = document.getElementById('btnLoginSubmit');
-            
-            if(!pwd) return alert("Please enter a password");
-            
-            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Processing...';
-            
-            try {
-                let action = loginMode === 'setup' ? 'auth_set_password' : 'auth_verify';
-                
-                const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: action, db: selectedDb, password: pwd}) });
-                const json = await res.json();
-                
-                if (json.status === 'success') {
-                    // For setup, we need to know the role, but auth_set_password might not return it directly unless we modify backend.
-                    // However, we can just redirect. The App will re-verify. 
-                    // Actually, let's just grab the role from the grid data for redirect if needed, or query verify again.
-                    // But standard flow:
-                    
-                    if (loginMode === 'setup') {
-                        // Auto-login after setup
-                        const verifyRes = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'auth_verify', db: selectedDb, password: pwd}) });
-                        const verifyJson = await verifyRes.json();
-                        if (verifyJson.status === 'success') {
-                             window.location.href = `${APP_URL}?db=${encodeURIComponent(selectedDb)}&role=${verifyJson.role}`;
-                        } else {
-                             alert("Setup complete. Please login.");
-                             loginMode = 'login';
-                             promptLogin(selectedDb, 'User'); // Reload modal
-                        }
-                    } else {
-                        window.location.href = `${APP_URL}?db=${encodeURIComponent(selectedDb)}&role=${json.role}`;
-                    }
-                } else {
-                    alert(json.error || "Incorrect Password");
-                    btn.innerText = loginMode === 'setup' ? "Set Password & Login" : "Access Database";
-                }
-            } catch(e) { alert("Connection Error"); btn.innerText = "Access Database"; }
-        }
-
-        function enterApp(dbName, role) { if(!isEditMode) promptLogin(dbName, role); }
 
         async function createDB() {
             if(!adminSession) return;
