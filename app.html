@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ResidencyWardMx</title>
+    <title>Ward Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -15,588 +15,678 @@
                     fontFamily: { sans: ['Sarabun', 'sans-serif'] },
                     colors: {
                         medical: { 50: '#f0f9ff', 100: '#e0f2fe', 500: '#0ea5e9', 600: '#0284c7', 900: '#0c4a6e' },
-                        success: { 100: '#dcfce7', 600: '#16a34a' }
-                    }
+                        slate: { 850: '#1e293b' }
+                    },
+                    boxShadow: { 'card': '0 2px 8px rgba(0,0,0,0.04)', 'float': '0 10px 30px rgba(0,0,0,0.1)' }
                 }
             }
         }
     </script>
     <style>
-        body { background-color: #f8fafc; color: #334155; -webkit-tap-highlight-color: transparent; }
-        .glass-header { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px); border-bottom: 1px solid #e2e8f0; }
-        .bed-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s; height: 160px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
-        .bed-card:active { transform: scale(0.98); }
-        .input-std { width: 100%; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; font-family: 'Sarabun'; font-size: 1rem; }
-        .input-std:focus { outline: none; border-color: #0ea5e9; background: white; }
-        .consult-chip { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; transition: all 0.2s; border: 1px solid transparent; }
-        .consult-chip.selected { background-color: #e0f2fe; color: #0284c7; border-color: #0ea5e9; }
-        .consult-chip.unselected { background-color: #f1f5f9; color: #64748b; border-color: #cbd5e1; opacity: 0.6; }
-        .color-dot { width: 36px; height: 36px; border-radius: 50%; cursor: pointer; transition: transform 0.2s; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .color-dot.active { transform: scale(1.2); box-shadow: 0 0 0 2px #334155; }
-        .todo-item { display: flex; items-center; gap: 8px; padding: 8px; border-radius: 8px; background: white; border: 1px solid #e2e8f0; margin-bottom: 6px; transition: all 0.3s; }
-        .todo-item.done { background-color: #dcfce7; border-color: #86efac; }
-        .todo-item.done span { text-decoration: line-through; color: #16a34a; }
+        body { background-color: #f1f5f9; color: #334155; -webkit-tap-highlight-color: transparent; }
+        .glass-header { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid #e2e8f0; }
+        .bed-card { background: white; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: var(--theme-shadow-card); transition: all 0.2s; min-height: 120px; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+        .bed-card:hover { border-color: #cbd5e1; transform: translateY(-1px); }
+        .bed-card.vacant { background: #f8fafc; border-style: dashed; justify-content: center; align-items: center; opacity: 0.6; }
+        .bed-card.vacant:hover { opacity: 1; border-color: #0ea5e9; background: #f0f9ff; cursor: pointer; }
         
-        /* Chief Mode Styles */
-        .chief-badge { position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; font-size: 0.6rem; padding: 2px 6px; border-radius: 8px; z-index: 10; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .fs-mode { position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 9999 !important; width: 100vw !important; height: 100vh !important; padding: 40px !important; font-size: 16pt !important; line-height: 1.5 !important; border-radius: 0 !important; }
+        
+        .consult-chip { padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; border: 1px solid transparent; }
+        .consult-chip.active { background-color: #e0f2fe; color: #0284c7; border-color: #bae6fd; }
+        
+        .color-dot { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: transform 0.2s; }
+        .color-dot.selected { border-color: #334155; transform: scale(1.1); }
+        
+        /* Grid Layouts */
+        .grid-1x36 { grid-template-columns: repeat(1, 1fr); }
+        .grid-2x18 { grid-template-columns: repeat(2, 1fr); }
+        .grid-3x12 { grid-template-columns: repeat(3, 1fr); }
+        .grid-4x9 { grid-template-columns: repeat(4, 1fr); }
+        .grid-5x7 { grid-template-columns: repeat(5, 1fr); }
+        .grid-6x6 { grid-template-columns: repeat(6, 1fr); }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
     <!-- AUTH OVERLAY -->
     <div id="authOverlay" class="fixed inset-0 z-50 bg-slate-50 flex items-center justify-center p-6">
-        <div class="w-full max-w-sm text-center">
-            <div class="w-20 h-20 bg-medical-500 rounded-3xl mx-auto mb-6 flex items-center justify-center text-white text-4xl shadow-lg transform rotate-6">
-                <i class="fa-solid fa-stethoscope"></i>
+        <div class="w-full max-w-sm text-center bg-white p-8 rounded-2xl shadow-float">
+            <div class="w-16 h-16 bg-medical-500 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-3xl shadow-lg shadow-medical-500/30">
+                <i class="fa-solid fa-hospital"></i>
             </div>
-            <h1 class="text-2xl font-bold text-slate-800 mb-1">ResidencyWardMx</h1>
-            <p class="text-slate-500 mb-8">Internal Medicine • <span id="loginDbName" class="font-bold text-medical-600">...</span></p>
+            <h1 class="text-xl font-bold text-slate-800" id="authTitle">Ward Manager</h1>
+            <p class="text-slate-500 text-sm mb-6" id="authSub">Accessing: <span id="loginDbName" class="font-bold text-medical-600">...</span></p>
             
-            <div id="authForm" class="hidden space-y-4">
-                <input type="password" id="loginPin" placeholder="Enter Ward Password" class="w-full p-4 text-center text-xl font-bold rounded-xl border border-slate-200 bg-white shadow-sm focus:outline-none focus:border-medical-500">
-                <button onclick="verifyPassword()" id="btnLogin" class="w-full py-4 bg-slate-800 text-white font-bold rounded-xl shadow-lg active:scale-95 transition">Access Ward</button>
+            <div id="authForm" class="hidden space-y-3">
+                <input type="password" id="loginPin" placeholder="Enter Password" class="w-full p-3 text-center text-lg font-bold rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:border-medical-500 focus:bg-white transition">
+                <button onclick="verifyPassword()" id="btnLogin" class="w-full py-3 bg-slate-800 text-white font-bold rounded-xl shadow-lg active:scale-95 transition">Login</button>
             </div>
-            <div id="setupForm" class="hidden space-y-4">
-                <p class="text-sm text-orange-500 font-bold bg-orange-50 p-2 rounded-lg">New Database Detected</p>
-                <input type="password" id="setupPin" placeholder="Create Password" class="w-full p-4 text-center text-xl font-bold rounded-xl border border-slate-200 bg-white shadow-sm">
-                <button onclick="setupPassword()" class="w-full py-4 bg-medical-600 text-white font-bold rounded-xl shadow-lg">Set Password</button>
+            <div id="setupForm" class="hidden space-y-3">
+                <div class="bg-orange-50 text-orange-600 p-2 rounded-lg text-xs font-bold mb-2">New Database - Setup Access</div>
+                <input type="password" id="setupPin" placeholder="Create New Password" class="w-full p-3 text-center text-lg font-bold rounded-xl border border-slate-200 bg-white">
+                <button onclick="setupPassword()" class="w-full py-3 bg-medical-600 text-white font-bold rounded-xl shadow-lg">Set Password</button>
             </div>
-            <div id="loadingState" class="mt-8"><i class="fa-solid fa-circle-notch fa-spin text-medical-500 text-2xl"></i></div>
+            <div id="loadingState" class="mt-4"><i class="fa-solid fa-circle-notch fa-spin text-medical-500 text-2xl"></i></div>
         </div>
     </div>
 
     <!-- MAIN APP -->
-    <div id="appContainer" class="hidden flex-1 flex flex-col h-full bg-[#f8fafc]">
+    <div id="appContainer" class="hidden flex-1 flex flex-col h-full bg-[#f1f5f9]">
         
         <!-- Header -->
         <header class="glass-header h-16 flex items-center justify-between px-4 shrink-0 z-20">
-            <div class="flex items-center gap-3" onclick="toggleChiefMenu()">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-medical-500 to-medical-600 text-white flex items-center justify-center shadow-md">
-                    <i class="fa-solid fa-user-doctor"></i>
+            <div class="flex items-center gap-3">
+                <div onclick="toggleGridMenu()" class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-600 flex items-center justify-center shadow-sm cursor-pointer hover:bg-slate-50">
+                    <i class="fa-solid fa-table-cells"></i>
                 </div>
-                <div class="leading-tight">
-                    <h2 class="font-bold text-lg text-slate-800" id="headerTitle">My Ward</h2>
-                    <div class="flex items-center gap-1 text-[10px] font-bold text-emerald-500 uppercase">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Live Sync
-                    </div>
+                <div>
+                    <h2 class="font-bold text-lg text-slate-800 leading-none" id="headerWard">General Ward</h2>
+                    <span id="roleBadge" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Resident View</span>
                 </div>
             </div>
             <div class="flex items-center gap-2">
                  <button onclick="changeWard()" class="bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2">
-                    <i class="fa-solid fa-layer-group"></i> <span id="currentWardLabel">General</span>
+                    <i class="fa-solid fa-layer-group"></i> <span class="hidden sm:inline">Change Ward</span>
                  </button>
-                 <button onclick="manualRefresh()" id="btnRefresh" class="w-10 h-10 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center"><i class="fa-solid fa-rotate"></i></button>
+                 <button onclick="exportData()" class="w-10 h-10 rounded-lg bg-white border border-slate-200 text-slate-500 flex items-center justify-center hover:text-medical-600"><i class="fa-solid fa-file-export"></i></button>
+                 <button onclick="fetchData()" id="btnRefresh" class="w-10 h-10 rounded-lg bg-slate-800 text-white flex items-center justify-center shadow-md"><i class="fa-solid fa-rotate"></i></button>
             </div>
         </header>
 
-        <!-- Chief Dashboard Toolbar (Hidden by default) -->
-        <div id="chiefToolbar" class="hidden bg-slate-800 text-white px-4 py-2 text-xs flex justify-between items-center shadow-inner">
-            <span class="font-bold text-orange-400"><i class="fa-solid fa-crown mr-1"></i> CHIEF RESIDENT MODE</span>
-            <span id="chiefStats">Aggregating...</span>
+        <!-- Grid Settings Dropdown -->
+        <div id="gridMenu" class="hidden absolute top-16 left-4 z-40 bg-white rounded-xl shadow-xl border border-slate-100 p-4 w-64 animate-fade-in">
+            <h4 class="text-xs font-bold text-slate-400 uppercase mb-3">Grid Layout (Vertical)</h4>
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="setGrid(1)" class="p-2 border rounded hover:bg-slate-50 text-xs font-bold">1 x 36</button>
+                <button onclick="setGrid(2)" class="p-2 border rounded hover:bg-slate-50 text-xs font-bold">2 x 18</button>
+                <button onclick="setGrid(3)" class="p-2 border rounded hover:bg-slate-50 text-xs font-bold">3 x 12</button>
+                <button onclick="setGrid(4)" class="p-2 border rounded hover:bg-slate-50 text-xs font-bold">4 x 9</button>
+                <button onclick="setGrid(5)" class="p-2 border rounded hover:bg-slate-50 text-xs font-bold">5 x 7</button>
+                <button onclick="setGrid(6)" class="p-2 border rounded hover:bg-slate-50 text-xs font-bold">6 x 6</button>
+            </div>
+            <div class="mt-3 pt-3 border-t">
+                <label class="flex items-center gap-2 text-xs font-bold text-slate-600">
+                    <input type="checkbox" id="checkHorizontal" onchange="toggleOrientation()" class="accent-medical-600"> Horizontal Flow
+                </label>
+            </div>
         </div>
 
         <!-- Bed Grid -->
-        <main class="flex-1 overflow-y-auto p-4 relative">
-            <div id="gridContainer" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 pb-20">
+        <main class="flex-1 overflow-y-auto p-4 md:p-6" id="mainScroll">
+            <div id="bedGrid" class="grid gap-3 pb-20 transition-all duration-300">
                 <!-- Beds Injected Here -->
-            </div>
-            
-            <!-- Empty State -->
-            <div id="emptyState" class="hidden absolute inset-0 flex flex-col items-center justify-center text-slate-300">
-                <i class="fa-solid fa-bed-pulse text-6xl mb-4 opacity-50"></i>
-                <p class="font-bold">No Active Patients</p>
-                <p class="text-sm">Tap + to admit</p>
             </div>
         </main>
 
-        <!-- Floating Action Button -->
-        <button onclick="openEditor()" class="fixed bottom-6 right-6 w-16 h-16 bg-medical-600 text-white rounded-full shadow-2xl shadow-medical-500/40 flex items-center justify-center z-30 active:scale-90 transition">
-            <i class="fa-solid fa-plus text-2xl"></i>
+        <!-- FAB -->
+        <button onclick="openEditor(null)" class="fixed bottom-6 right-6 w-14 h-14 bg-slate-800 text-white rounded-full shadow-2xl flex items-center justify-center z-30 hover:scale-105 transition">
+            <i class="fa-solid fa-plus text-xl"></i>
         </button>
 
     </div>
 
     <!-- EDITOR MODAL -->
     <div id="editorModal" class="fixed inset-0 z-50 hidden">
-        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeEditor()"></div>
-        <div class="absolute inset-x-0 bottom-0 top-10 bg-white rounded-t-[2rem] flex flex-col overflow-hidden shadow-2xl animate-slide-up">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeEditor()"></div>
+        <div class="absolute inset-x-0 bottom-0 top-12 md:top-20 md:inset-x-auto md:right-0 md:w-[600px] bg-white rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none flex flex-col shadow-2xl animate-slide-up">
             
-            <!-- Modal Header -->
-            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center shrink-0 bg-white z-10">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white z-10 rounded-t-2xl">
                 <div>
-                    <h3 class="text-xl font-bold text-slate-800" id="editorTitle">Admit Patient</h3>
-                    <p class="text-xs text-slate-400 font-bold" id="editorSubtitle">New Record</p>
+                    <h3 class="text-xl font-bold text-slate-800" id="editorTitle">Patient Details</h3>
+                    <div id="editorBedBadge" class="inline-block bg-medical-50 text-medical-700 text-xs font-bold px-2 py-0.5 rounded mt-1">Bed #</div>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="toggleDischarge()" id="btnDischarge" class="px-3 py-2 bg-slate-100 text-slate-400 rounded-lg text-xs font-bold transition">
-                        <i class="fa-solid fa-box-archive mr-1"></i> Discharge
+                    <button onclick="toggleDischarge()" id="btnDischarge" class="px-3 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold transition hover:bg-slate-200">
+                        Archive
                     </button>
-                    <button onclick="closeEditor()" class="w-10 h-10 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center"><i class="fa-solid fa-xmark text-xl"></i></button>
+                    <button onclick="closeEditor()" class="w-9 h-9 rounded-full bg-slate-50 text-slate-400 hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-xmark text-lg"></i></button>
                 </div>
             </div>
 
-            <!-- Modal Body -->
-            <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-[#fcfcfc]">
+            <!-- Body -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-white">
                 
-                <!-- 1. Identification -->
-                <div class="flex gap-4">
-                    <div class="w-1/3 space-y-1">
-                        <label class="text-xs font-bold text-slate-400 uppercase">Bed No.</label>
-                        <select id="editBed" class="input-std font-bold text-center text-lg bg-white border-2 border-slate-200">
-                            <!-- Generated 1-50 -->
+                <!-- Identification -->
+                <div class="flex gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <div class="w-24 space-y-1">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Bed No.</label>
+                        <select id="editBed" class="w-full bg-white border border-slate-200 rounded-lg p-2 font-bold text-center text-lg outline-none focus:border-medical-500">
+                            <!-- JS Populated -->
                         </select>
                     </div>
-                    <div class="w-2/3 space-y-1">
-                        <label class="text-xs font-bold text-slate-400 uppercase">Patient HN</label>
-                        <input type="text" id="editHN" class="input-std font-bold text-lg bg-white border-2 border-slate-200" placeholder="HN 12345">
+                    <div class="flex-1 space-y-1">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Name (Auto-fill if empty)</label>
+                        <input type="text" id="editName" class="w-full bg-white border border-slate-200 rounded-lg p-2 font-bold text-lg outline-none focus:border-medical-500 placeholder:font-normal placeholder:text-slate-300" placeholder="Patient Name">
                     </div>
                 </div>
 
-                <div class="space-y-1">
-                    <label class="text-xs font-bold text-slate-400 uppercase">Patient Name</label>
-                    <input type="text" id="editName" class="input-std" placeholder="Full Name">
+                <div class="space-y-1 px-1">
+                     <label class="text-[10px] font-bold text-slate-400 uppercase">HN (Optional)</label>
+                     <input type="text" id="editHN" class="w-full bg-slate-50 border-b border-slate-200 p-2 font-mono text-sm outline-none focus:border-medical-500 focus:bg-white transition" placeholder="HN 12345">
                 </div>
 
-                <!-- 2. Consult Units (Multi-Select) -->
+                <!-- Color Coding -->
                 <div class="space-y-2">
-                    <label class="text-xs font-bold text-slate-400 uppercase">Consultation Units</label>
-                    <div id="consultContainer" class="flex flex-wrap gap-2"></div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase px-1">Card Color</label>
+                    <div id="colorContainer" class="flex flex-wrap gap-2 px-1"></div>
                 </div>
 
-                <!-- 3. Details -->
-                <div class="space-y-1 relative">
-                    <label class="text-xs font-bold text-slate-400 uppercase flex justify-between">
-                        <span>Details</span>
-                        <span onclick="toggleFullScreen()" class="text-medical-500 cursor-pointer"><i class="fa-solid fa-expand"></i> Expand</span>
+                <!-- Consults -->
+                <div class="space-y-2">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase px-1">Consultation Units</label>
+                    <div id="consultContainer" class="flex flex-wrap gap-2 px-1 mb-2"></div>
+                    <div class="flex gap-2 px-1">
+                        <input type="text" id="customConsult" placeholder="Add Other..." class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none">
+                        <button onclick="addCustomConsult()" class="bg-slate-200 text-slate-600 px-3 rounded-lg text-xs font-bold hover:bg-slate-300">+</button>
+                    </div>
+                </div>
+
+                <!-- Details (Double Click Fullscreen) -->
+                <div class="space-y-2 group">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase px-1 flex justify-between">
+                        <span>Medical Details</span>
+                        <span class="text-medical-500 cursor-pointer opacity-0 group-hover:opacity-100 transition" onclick="toggleFullScreen()"><i class="fa-solid fa-expand mr-1"></i>Fullscreen</span>
                     </label>
-                    <textarea id="editDetails" class="input-std h-32 resize-none" placeholder="Diagnosis, active problems..."></textarea>
+                    <textarea id="editDetails" ondblclick="toggleFullScreen()" class="w-full bg-yellow-50/50 border border-yellow-100 rounded-xl p-4 text-slate-700 leading-relaxed outline-none focus:ring-2 focus:ring-yellow-200 transition resize-none min-h-[150px] font-sans" placeholder="Diagnosis, Active Issues, Plan..."></textarea>
+                    <button id="exitFsBtn" onclick="toggleFullScreen()" class="hidden fixed top-6 right-6 z-[10000] bg-black/80 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg hover:bg-black">Exit Fullscreen</button>
                 </div>
 
-                <!-- 4. To-Do List -->
-                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <!-- Todo -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
                     <div class="flex justify-between items-center mb-3">
-                        <h4 class="font-bold text-slate-700"><i class="fa-solid fa-list-check text-medical-500 mr-2"></i>To-Do List</h4>
-                        <button onclick="addTodo()" class="text-xs bg-medical-50 text-medical-600 px-3 py-1 rounded-full font-bold">+ Add</button>
+                        <h4 class="font-bold text-xs text-slate-500 uppercase"><i class="fa-solid fa-list-check mr-1"></i> To-Do List</h4>
+                        <button onclick="addTodo()" class="w-6 h-6 rounded bg-white border border-slate-200 text-medical-600 flex items-center justify-center hover:shadow-sm"><i class="fa-solid fa-plus text-xs"></i></button>
                     </div>
                     <div id="todoContainer" class="space-y-2"></div>
                 </div>
 
-                <!-- 5. Priority Color -->
-                <div class="space-y-2">
-                    <label class="text-xs font-bold text-slate-400 uppercase">Priority Label</label>
-                    <div id="colorContainer" class="flex flex-wrap gap-3 py-2 px-1 overflow-x-auto"></div>
+                <div class="pt-4">
+                     <button onclick="deleteRecord()" id="btnDelete" class="w-full text-rose-400 text-xs font-bold py-3 hover:text-rose-600 transition">Delete Permanently</button>
                 </div>
-
-                <button onclick="deleteRecord()" id="btnDelete" class="w-full text-rose-500 text-sm font-bold py-4 mt-4 hidden"><i class="fa-regular fa-trash-can mr-2"></i>Delete Record</button>
-                <div class="h-20"></div> <!-- Spacer -->
             </div>
 
-            <!-- Modal Footer -->
-            <div class="absolute bottom-0 inset-x-0 bg-white border-t border-slate-100 p-4 pb-8 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
-                <button onclick="saveRecord()" id="btnSave" class="w-full bg-slate-800 text-white text-lg font-bold py-4 rounded-xl shadow-xl active:scale-95 transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-floppy-disk"></i> Save Record
+            <!-- Footer -->
+            <div class="p-4 bg-white border-t border-slate-100 pb-8">
+                <button onclick="saveRecord()" id="btnSave" class="w-full bg-slate-800 text-white text-lg font-bold py-4 rounded-xl shadow-lg active:scale-95 transition flex items-center justify-center gap-2 hover:bg-slate-700">
+                    <i class="fa-solid fa-floppy-disk"></i> Save Changes
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Ward Selector Modal -->
+    <!-- Ward Modal -->
     <div id="wardModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
-        <div class="bg-white rounded-2xl w-80 p-6 shadow-2xl">
-            <h3 class="font-bold text-lg mb-4">Select Ward</h3>
-            <div id="wardList" class="space-y-2 max-h-60 overflow-y-auto mb-4"></div>
+        <div class="bg-white rounded-2xl w-80 p-6 shadow-2xl animate-fade-in">
+            <h3 class="font-bold text-lg mb-4 text-slate-800">Select Ward</h3>
+            <div id="wardList" class="space-y-2 max-h-60 overflow-y-auto mb-4 pr-2"></div>
             <div class="flex gap-2 border-t pt-4">
-                <input type="text" id="newWardName" placeholder="New Ward Name" class="input-std text-sm">
-                <button onclick="createNewWard()" class="bg-medical-600 text-white px-3 rounded-lg font-bold"><i class="fa-solid fa-plus"></i></button>
+                <input type="text" id="newWardName" placeholder="New Ward..." class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm flex-1 outline-none focus:border-medical-500">
+                <button onclick="createNewWard()" class="bg-medical-600 text-white w-10 rounded-lg font-bold hover:bg-medical-700"><i class="fa-solid fa-plus"></i></button>
             </div>
-            <button onclick="toggleElement('wardModal', false)" class="mt-4 w-full text-slate-400 text-sm font-bold">Cancel</button>
+            <button onclick="document.getElementById('wardModal').classList.add('hidden')" class="mt-4 w-full text-slate-400 text-sm font-bold hover:text-slate-600">Cancel</button>
         </div>
     </div>
 
     <script>
-        // --- CONFIGURATION ---
-        // Your Verified Deployment URL
+        // CONFIG
         const API_URL = "https://script.google.com/macros/s/AKfycbxZrOuiFqLzmaX9T7PN7xqwV-jvE80dBuNk4Gc3nV1K8-ZZw0YUEYDupPg_RKc1JUFB/exec";
-        
-        const CONSULT_UNITS = [
-            {id: 'Cardio', icon: 'fa-heart-pulse'}, {id: 'Chest', icon: 'fa-lungs'}, {id: 'GI', icon: 'fa-burger'},
-            {id: 'Endo', icon: 'fa-cube'}, {id: 'Rheumato', icon: 'fa-bone'}, {id: 'Skin', icon: 'fa-hand-dots'},
-            {id: 'ID', icon: 'fa-virus'}, {id: 'Hemato', icon: 'fa-droplet'}, {id: 'Neuro', icon: 'fa-brain'},
-            {id: 'Nephro', icon: 'fa-kidney'}, {id: 'Onco', icon: 'fa-radiation'}, {id: 'Other', icon: 'fa-circle-question'}
-        ];
-        const PASTEL_COLORS = [
-            '#fecaca', '#fdba74', '#fde047', '#bef264', '#86efac', '#6ee7b7', '#5eead4', '#67e8f9', 
-            '#7dd3fc', '#93c5fd', '#a5b4fc', '#c4b5fd', '#d8b4fe', '#f0abfc', '#f9a8d4', '#fda4af', 
-            '#e2e8f0', '#cbd5e1', '#94a3b8', '#ffffff'
-        ];
+        const MASTER_KEY = "14159265";
 
-        let USER_DB = new URLSearchParams(window.location.search).get('db');
+        const STANDARD_UNITS = [
+            {id: 'Cardio', icon: 'fa-heart-pulse', color: 'text-rose-500'}, 
+            {id: 'Chest', icon: 'fa-lungs', color: 'text-cyan-500'}, 
+            {id: 'GI', icon: 'fa-burger', color: 'text-orange-500'},
+            {id: 'Neuro', icon: 'fa-brain', color: 'text-pink-500'},
+            {id: 'Nephro', icon: 'fa-kidney', color: 'text-yellow-600'}, 
+            {id: 'ID', icon: 'fa-virus', color: 'text-green-500'}, 
+            {id: 'Hemato', icon: 'fa-droplet', color: 'text-red-600'}, 
+            {id: 'Onco', icon: 'fa-radiation', color: 'text-purple-500'}
+        ];
+        
+        const COLORS = ['#ffffff', '#fecaca', '#fed7aa', '#fef08a', '#bbf7d0', '#99f6e4', '#bfdbfe', '#ddd6fe', '#fbcfe8', '#e2e8f0'];
+
+        // STATE
+        let DB_NAME = new URLSearchParams(window.location.search).get('db');
+        let ROLE = new URLSearchParams(window.location.search).get('role') || 'resident';
         let PASSWORD = "";
+        
         let records = [];
-        let allSheetsData = []; // For Chief Mode
-        let isChiefMode = false;
-        let currentWard = "General";
-        let wards = new Set(["General"]);
+        let currentWard = "General Ward";
+        let wards = new Set(["General Ward"]);
+        
+        let gridCols = 3; 
+        let gridRows = 12; // Default 3x12 (36)
+        let isHorizontal = false;
+
         let editingId = null;
-        let activeConsults = new Set();
+        let activeConsults = []; // Array of objects {id, icon}
         let currentTodos = [];
         let currentDischarged = false;
 
-        // --- INIT ---
+        // INIT
         window.onload = () => {
-            if(!USER_DB) { document.body.innerHTML = "<div class='p-10 text-center'>No Database Selected. Please use the Portal.</div>"; return; }
-            document.getElementById('loginDbName').innerText = USER_DB;
-            document.getElementById('headerTitle').innerText = USER_DB;
+            if(!DB_NAME) return document.body.innerHTML = "<div class='p-10 text-center font-bold'>Error: No Database Selected</div>";
+            
+            document.getElementById('loginDbName').innerText = DB_NAME;
+            document.getElementById('roleBadge').innerText = ROLE === 'chief' ? "Chief View (Aggregated)" : "Resident View";
+            if(ROLE === 'chief') document.getElementById('roleBadge').className = "text-[10px] font-bold text-orange-500 uppercase tracking-wider";
+
+            // Load Grid Settings
+            const savedGrid = localStorage.getItem('ward_grid_cols');
+            if(savedGrid) gridCols = parseInt(savedGrid);
+            
             checkAuth();
-            renderConsultChips();
             renderColorPicker();
-            populateBedSelect();
         };
 
-        // --- AUTH ---
+        // AUTH
         async function checkAuth() {
+            // Check if Master Key is needed (Chief) or normal password
             try {
-                const res = await fetch(`${API_URL}?action=auth_check_status&db=${USER_DB}`);
+                const res = await fetch(`${API_URL}?action=auth_check_status&db=${DB_NAME}`);
                 const json = await res.json();
-                toggleElement('loadingState', false);
-                if (json.status === 'setup_needed') toggleElement('setupForm', true);
-                else if (json.status === 'locked') toggleElement('authForm', true);
-                else alert(json.error || "Database Error");
-            } catch(e) { alert("Connection Failed"); }
+                document.getElementById('loadingState').classList.add('hidden');
+                
+                if (ROLE === 'chief') {
+                    // Chief Mode always asks for password (Master Key logic handled in verify)
+                    document.getElementById('authTitle').innerText = "Chief Access";
+                    document.getElementById('authForm').classList.remove('hidden');
+                } else {
+                    if (json.status === 'setup_needed') document.getElementById('setupForm').classList.remove('hidden');
+                    else document.getElementById('authForm').classList.remove('hidden');
+                }
+            } catch(e) { alert("Connection Error"); }
         }
 
         async function verifyPassword() {
             const p = document.getElementById('loginPin').value;
-            const btn = document.getElementById('btnLogin'); btn.innerHTML = "Verifying...";
+            const btn = document.getElementById('btnLogin'); btn.innerText = "...";
+            
             try {
-                const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'auth_verify', db: USER_DB, password: p}) });
+                // If Chief, we verify against Master Key via backend logic or specialized auth
+                const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'auth_verify', db: DB_NAME, password: p}) });
                 const json = await res.json();
+                
                 if (json.status === 'success') {
+                    if (ROLE === 'chief' && !json.isMaster) {
+                         alert("Chief Mode requires Master Key");
+                         btn.innerText = "Login";
+                         return;
+                    }
                     PASSWORD = p;
-                    toggleElement('authOverlay', false);
-                    toggleElement('appContainer', true);
-                    if(json.isMaster) { enableChiefMode(); }
+                    document.getElementById('authOverlay').classList.add('hidden');
+                    document.getElementById('appContainer').classList.remove('hidden');
                     fetchData();
                 } else {
                     alert("Incorrect Password");
-                    document.getElementById('loginPin').value = "";
                 }
-            } catch(e) { alert("Network Error"); } finally { btn.innerHTML = "Access Ward"; }
+            } catch(e) { alert("Network Error"); } 
+            finally { btn.innerText = "Login"; }
         }
 
         async function setupPassword() {
             const p = document.getElementById('setupPin').value;
-            if(!p) return alert("Enter a password");
-            await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'auth_set_password', db: USER_DB, password: p}) });
+            if(!p) return;
+            await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'auth_set_password', db: DB_NAME, password: p}) });
             location.reload();
         }
 
-        // --- DATA ---
+        // DATA FETCHING
         async function fetchData() {
             const btn = document.getElementById('btnRefresh'); btn.classList.add('animate-spin');
             
-            if (isChiefMode) {
-                 await fetchAllChiefData();
+            if (ROLE === 'chief') {
+                // Chief fetches ALL users then filters by Current Ward locally
+                const listRes = await fetch(`${API_URL}?action=admin_list_users`);
+                const listJson = await listRes.json();
+                
+                // Fetch all in parallel
+                const promises = listJson.users.map(u => 
+                    fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'read', db: u, password: PASSWORD}) })
+                    .then(r => r.json())
+                    .then(data => data.map(rec => ({...processRecord(rec), owner: u})))
+                    .catch(() => [])
+                );
+                const results = await Promise.all(promises);
+                records = results.flat();
             } else {
-                try {
-                    const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'read', db: USER_DB, password: PASSWORD}) });
-                    const json = await res.json();
-                    records = json.map(processRecord);
-                    updateWardsList();
-                    renderGrid();
-                } catch(e) { console.error(e); }
+                const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'read', db: DB_NAME, password: PASSWORD}) });
+                const json = await res.json();
+                records = json.map(processRecord);
             }
+
+            // Extract Wards
+            wards = new Set(["General Ward"]);
+            records.forEach(r => { if(r.ward) wards.add(r.ward); });
+            
+            // If current ward not in list, default to General
+            if(!wards.has(currentWard) && records.length > 0) {
+                 // Try to keep current if possible, else switch
+            }
+
+            renderGrid();
             btn.classList.remove('animate-spin');
         }
 
         function processRecord(r) {
-            // Parse JSON fields
-            let consults = [];
-            let todos = [];
-            try { consults = JSON.parse(r.consult_units); } catch(e) {}
-            try { todos = JSON.parse(r.todo_list); } catch(e) {}
-            return { ...r, consult_units: consults || [], todo_list: todos || [], is_discharged: (r.is_discharged === true || r.is_discharged === "TRUE") };
+            let c = [], t = [];
+            try { c = JSON.parse(r.consult_units); } catch(e) {}
+            try { t = JSON.parse(r.todo_list); } catch(e) {}
+            return { 
+                ...r, 
+                consult_units: Array.isArray(c) ? c : [], 
+                todo_list: Array.isArray(t) ? t : [],
+                is_discharged: r.is_discharged === true || r.is_discharged === "TRUE"
+            };
         }
 
-        // --- CHIEF MODE LOGIC ---
-        function enableChiefMode() {
-            isChiefMode = true;
-            document.getElementById('chiefToolbar').classList.remove('hidden');
-            document.getElementById('headerTitle').innerText = "Chief Overview";
-            document.body.style.backgroundColor = "#1e293b";
-        }
-
-        async function fetchAllChiefData() {
-            document.getElementById('chiefStats').innerText = "Fetching User List...";
-            // 1. Get all DB names
-            const listRes = await fetch(`${API_URL}?action=admin_list_users`);
-            const listJson = await listRes.json();
-            const users = listJson.users;
-            
-            // 2. Fetch all data (Simulated Parallelism)
-            document.getElementById('chiefStats').innerText = `Syncing ${users.length} Residents...`;
-            allSheetsData = [];
-            
-            // NOTE: In production, backend should have a 'read_all' function. 
-            // For now, we loop requests. It might be slow but works.
-            const promises = users.map(u => 
-                fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'read', db: u, password: PASSWORD}) })
-                .then(r => r.json())
-                .then(data => data.map(rec => ({...processRecord(rec), owner: u})))
-                .catch(() => [])
-            );
-
-            const results = await Promise.all(promises);
-            records = results.flat();
-            
-            updateWardsList();
+        // GRID SYSTEM
+        function toggleGridMenu() { document.getElementById('gridMenu').classList.toggle('hidden'); }
+        
+        function setGrid(cols) {
+            gridCols = cols;
+            localStorage.setItem('ward_grid_cols', cols);
             renderGrid();
-            document.getElementById('chiefStats').innerText = `${records.length} Total Patients`;
+            toggleGridMenu();
         }
 
-        // --- RENDERERS ---
-        function updateWardsList() {
-            wards = new Set(["General"]);
-            records.forEach(r => { if(r.ward) wards.add(r.ward); });
-            if (!wards.has(currentWard)) currentWard = "General";
-            document.getElementById('currentWardLabel').innerText = currentWard;
+        function toggleOrientation() {
+            isHorizontal = document.getElementById('checkHorizontal').checked;
+            renderGrid();
         }
 
         function renderGrid() {
-            const grid = document.getElementById('gridContainer');
+            const grid = document.getElementById('bedGrid');
+            grid.style.gridTemplateColumns = `repeat(${gridCols}, 1fr)`;
             grid.innerHTML = "";
+            document.getElementById('headerWard').innerText = currentWard;
+
+            // Filter records for current ward & not discharged
+            const activeRecords = records.filter(r => r.ward === currentWard && !r.is_discharged);
             
-            const wardRecords = records.filter(r => r.ward === currentWard && !r.is_discharged);
-            if (wardRecords.length === 0) toggleElement('emptyState', true); else toggleElement('emptyState', false);
+            // Total Slots logic (Auto-expand based on max bed number found or min 36)
+            let maxBed = 36;
+            activeRecords.forEach(r => { if(parseInt(r.bed_number) > maxBed) maxBed = parseInt(r.bed_number); });
+            // Round up to row completion if needed
+            const totalSlots = Math.max(36, Math.ceil(maxBed / gridCols) * gridCols);
 
-            // Sort by Bed Number
-            wardRecords.sort((a,b) => parseInt(a.bed_number) - parseInt(b.bed_number));
-
-            wardRecords.forEach(r => {
-                const color = r.color_id || '#ffffff';
-                const consultsHtml = Array.isArray(r.consult_units) ? r.consult_units.slice(0,3).map(c => {
-                   const icon = CONSULT_UNITS.find(u => u.id === c)?.icon || 'fa-circle';
-                   return `<i class="fa-solid ${icon} text-[10px] text-slate-500"></i>`;
-                }).join(' ') : '';
+            for(let i=1; i<=totalSlots; i++) {
+                // Find patients in this bed
+                // In Chief mode, there might be multiple (Conflict). Show all.
+                const occupants = activeRecords.filter(r => parseInt(r.bed_number) === i);
                 
-                // Done count
-                const doneCount = Array.isArray(r.todo_list) ? r.todo_list.filter(t=>t.done).length : 0;
-                const totalTodo = Array.isArray(r.todo_list) ? r.todo_list.length : 0;
-                const todoBadge = totalTodo > 0 ? `<span class="text-[10px] font-bold ${doneCount === totalTodo ? 'text-green-500' : 'text-orange-500'} bg-slate-50 px-1 rounded">${doneCount}/${totalTodo}</span>` : '';
+                if (occupants.length === 0) {
+                    // Vacant Slot
+                    grid.innerHTML += `
+                    <div onclick="openEditor(null, ${i})" class="bed-card vacant group">
+                        <span class="text-3xl font-bold text-slate-300 group-hover:text-medical-400">${i}</span>
+                        <span class="text-[10px] font-bold text-slate-300 uppercase mt-1 group-hover:text-medical-500">Vacant</span>
+                    </div>`;
+                } else {
+                    // Occupied
+                    occupants.forEach(r => {
+                        const bg = r.color_id || '#ffffff';
+                        const consultChips = r.consult_units.slice(0, 3).map(c => {
+                            const icon = c.icon || 'fa-circle';
+                            return `<i class="fa-solid ${icon} text-[10px] text-slate-500"></i>`;
+                        }).join(' ');
+                        
+                        // Todo Status
+                        const done = r.todo_list.filter(t => t.done).length;
+                        const total = r.todo_list.length;
+                        const todoHtml = total > 0 ? `<div class="text-[10px] font-bold ${done===total?'text-green-500':'text-orange-500'} bg-slate-50 px-1.5 py-0.5 rounded ml-auto">${done}/${total}</div>` : '';
 
-                // Chief Mode Owner Badge
-                const ownerBadge = r.owner ? `<div class="chief-badge">${r.owner.substr(0,5)}</div>` : '';
+                        // Owner Badge (Chief)
+                        const ownerTag = (ROLE === 'chief' && r.owner) ? `<div class="absolute top-0 right-0 bg-slate-800 text-white text-[9px] px-2 py-0.5 rounded-bl-lg z-10 font-bold">${r.owner.substr(0,4)}</div>` : '';
 
-                const card = document.createElement('div');
-                card.className = "bed-card relative";
-                card.innerHTML = `
-                    <div class="h-1.5 w-full" style="background-color: ${color}"></div>
-                    ${ownerBadge}
-                    <div class="p-3 flex-1 flex flex-col" onclick="openEditor('${r.id}')">
-                        <div class="flex justify-between items-start">
-                            <span class="text-2xl font-bold text-slate-800 leading-none">${r.bed_number}</span>
-                            <div class="flex gap-1">${consultsHtml}</div>
-                        </div>
-                        <div class="mt-2">
-                            <p class="text-sm font-bold text-slate-700 truncate">${r.name || 'Unknown'}</p>
-                            <p class="text-xs text-slate-400 font-mono">HN: ${r.hn || '-'}</p>
-                        </div>
-                        <div class="mt-auto pt-2 border-t border-slate-100 flex justify-between items-center">
-                             ${todoBadge}
-                             <i class="fa-solid fa-chevron-right text-slate-300 text-xs ml-auto"></i>
-                        </div>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
+                        grid.innerHTML += `
+                        <div onclick="openEditor('${r.id}', ${i})" class="bed-card cursor-pointer group" style="background: linear-gradient(to bottom, ${bg} 0%, #ffffff 40%)">
+                            ${ownerTag}
+                            <div class="p-3 flex-1 flex flex-col relative">
+                                <div class="flex justify-between items-start mb-1">
+                                    <span class="text-2xl font-bold text-slate-800">${i}</span>
+                                    <div class="flex gap-1 pt-1">${consultChips}</div>
+                                </div>
+                                
+                                <div class="mt-1">
+                                    <h4 class="font-bold text-sm text-slate-700 leading-tight truncate">${r.name || 'Unknown'}</h4>
+                                    <p class="text-[10px] font-mono text-slate-400 mt-0.5">HN: ${r.hn || '-'}</p>
+                                </div>
+
+                                <div class="mt-auto pt-2 flex items-center border-t border-slate-50/50">
+                                    ${todoHtml}
+                                </div>
+                            </div>
+                        </div>`;
+                    });
+                }
+            }
         }
 
-        // --- EDITOR LOGIC ---
-        function openEditor(id = null) {
+        // EDITOR
+        function openEditor(id, bedNum) {
             toggleElement('editorModal', true);
             editingId = id;
             currentTodos = [];
-            activeConsults.clear();
+            activeConsults = [];
             currentDischarged = false;
+            
+            // Populate Bed Select (Dynamic 1-100)
+            const sel = document.getElementById('editBed');
+            sel.innerHTML = "";
+            for(let i=1; i<=100; i++) sel.innerHTML += `<option value="${i}">${i}</option>`;
 
             if (id) {
-                // Edit
                 const r = records.find(x => x.id === id);
-                document.getElementById('editorTitle').innerText = `Bed ${r.bed_number}`;
-                document.getElementById('editorSubtitle').innerText = "Edit Patient";
+                document.getElementById('editorTitle').innerText = "Edit Patient";
                 document.getElementById('editBed').value = r.bed_number;
+                document.getElementById('editorBedBadge').innerText = `Bed #${r.bed_number}`;
                 document.getElementById('editHN').value = r.hn;
                 document.getElementById('editName').value = r.name;
                 document.getElementById('editDetails').value = r.details;
                 
-                if (Array.isArray(r.consult_units)) r.consult_units.forEach(c => activeConsults.add(c));
-                if (Array.isArray(r.todo_list)) currentTodos = JSON.parse(JSON.stringify(r.todo_list)); // Deep copy
+                activeConsults = r.consult_units ? JSON.parse(JSON.stringify(r.consult_units)) : [];
+                currentTodos = r.todo_list ? JSON.parse(JSON.stringify(r.todo_list)) : [];
                 
                 setActiveColor(r.color_id);
                 toggleElement('btnDelete', true);
             } else {
-                // New
                 document.getElementById('editorTitle').innerText = "Admit Patient";
-                document.getElementById('editorSubtitle').innerText = "New Record";
-                document.getElementById('editBed').value = "1";
+                // Smart fill bed
+                document.getElementById('editBed').value = bedNum || 1;
+                document.getElementById('editorBedBadge').innerText = `Bed #${bedNum || 1}`;
+                
                 document.getElementById('editHN').value = "";
                 document.getElementById('editName').value = "";
                 document.getElementById('editDetails').value = "";
-                setActiveColor(PASTEL_COLORS[0]);
+                
+                setActiveColor('#ffffff');
                 toggleElement('btnDelete', false);
             }
 
-            renderActiveConsults();
+            renderConsults();
             renderTodos();
             updateDischargeBtn();
         }
 
         function closeEditor() { toggleElement('editorModal', false); }
 
-        function renderActiveConsults() {
-            const container = document.getElementById('consultContainer');
-            container.innerHTML = CONSULT_UNITS.map(u => {
-                const isSel = activeConsults.has(u.id);
-                return `<div onclick="toggleConsult('${u.id}')" class="consult-chip cursor-pointer ${isSel ? 'selected' : 'unselected'}">
+        // CONSULTS
+        function renderConsults() {
+            const div = document.getElementById('consultContainer');
+            div.innerHTML = "";
+            
+            // Merge Standard + Active Custom ones
+            const allUnits = [...STANDARD_UNITS];
+            // Add custom ones from active list if not in standard
+            activeConsults.forEach(ac => {
+                if (!allUnits.find(u => u.id === ac.id)) allUnits.push(ac);
+            });
+
+            allUnits.forEach(u => {
+                const isActive = activeConsults.find(ac => ac.id === u.id);
+                div.innerHTML += `
+                <div onclick="toggleConsult('${u.id}', '${u.icon}')" class="consult-chip cursor-pointer select-none transition ${isActive ? 'active' : 'bg-slate-100 text-slate-400'}">
                     <i class="fa-solid ${u.icon}"></i> ${u.id}
                 </div>`;
-            }).join('');
-        }
-
-        function toggleConsult(id) {
-            if(activeConsults.has(id)) activeConsults.delete(id); else activeConsults.add(id);
-            renderActiveConsults();
-        }
-
-        function renderTodos() {
-            const list = document.getElementById('todoContainer');
-            list.innerHTML = "";
-            currentTodos.forEach((todo, idx) => {
-                const div = document.createElement('div');
-                div.className = `todo-item ${todo.done ? 'done' : ''}`;
-                div.innerHTML = `
-                    <input type="checkbox" class="w-5 h-5 accent-emerald-500" ${todo.done ? 'checked' : ''} onchange="toggleTodo(${idx})">
-                    <span class="flex-1 text-sm font-medium outline-none" contenteditable="true" onblur="updateTodoText(${idx}, this.innerText)">${todo.text}</span>
-                    <i class="fa-solid fa-xmark text-slate-300 p-2 cursor-pointer" onclick="removeTodo(${idx})"></i>
-                `;
-                list.appendChild(div);
             });
         }
 
-        function addTodo() { currentTodos.push({text: "New Task", done: false}); renderTodos(); }
-        function removeTodo(i) { currentTodos.splice(i, 1); renderTodos(); }
-        function toggleTodo(i) { currentTodos[i].done = !currentTodos[i].done; renderTodos(); }
-        function updateTodoText(i, txt) { currentTodos[i].text = txt; }
-
-        function renderColorPicker() {
-            document.getElementById('colorContainer').innerHTML = PASTEL_COLORS.map(c => 
-                `<div class="color-dot" style="background-color: ${c}" onclick="setActiveColor('${c}')" data-col="${c}"></div>`
-            ).join('');
-        }
-        function setActiveColor(c) {
-            document.querySelectorAll('.color-dot').forEach(el => {
-                el.classList.toggle('active', el.dataset.col === c);
-            });
-            document.getElementById('colorContainer').dataset.selected = c;
+        function toggleConsult(id, icon) {
+            const idx = activeConsults.findIndex(c => c.id === id);
+            if(idx > -1) activeConsults.splice(idx, 1);
+            else activeConsults.push({id, icon});
+            renderConsults();
         }
 
-        function populateBedSelect() {
-            let html = "";
-            for(let i=1; i<=50; i++) html += `<option value="${i}">${i}</option>`;
-            document.getElementById('editBed').innerHTML = html;
-        }
-
-        function toggleDischarge() {
-            currentDischarged = !currentDischarged;
-            updateDischargeBtn();
-        }
-
-        function updateDischargeBtn() {
-            const btn = document.getElementById('btnDischarge');
-            if (currentDischarged) {
-                btn.className = "px-3 py-2 bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition";
-                btn.innerHTML = `<i class="fa-solid fa-check mr-1"></i> Discharged`;
-            } else {
-                btn.className = "px-3 py-2 bg-slate-100 text-slate-400 rounded-lg text-xs font-bold transition";
-                btn.innerHTML = `<i class="fa-solid fa-box-archive mr-1"></i> Discharge`;
+        function addCustomConsult() {
+            const val = document.getElementById('customConsult').value.trim();
+            if(val) {
+                activeConsults.push({id: val, icon: 'fa-circle-plus'});
+                document.getElementById('customConsult').value = "";
+                renderConsults();
             }
         }
 
-        // --- ACTIONS ---
-        async function saveRecord() {
-            if (isChiefMode && !confirm("You are in Chief Mode. Saving will create a new record in YOUR database (Resident1), not the original user's. Continue?")) return;
+        // TODOS
+        function renderTodos() {
+            const div = document.getElementById('todoContainer');
+            div.innerHTML = "";
+            currentTodos.forEach((t, i) => {
+                div.innerHTML += `
+                <div class="flex items-center gap-2 p-2 bg-white rounded border ${t.done ? 'border-green-200 bg-green-50' : 'border-slate-200'}">
+                    <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo(${i})" class="accent-green-500">
+                    <input type="text" value="${t.text}" onblur="currentTodos[${i}].text=this.value" class="flex-1 bg-transparent outline-none text-xs ${t.done ? 'line-through text-green-600' : 'text-slate-700'}">
+                    <i class="fa-solid fa-xmark text-slate-300 cursor-pointer" onclick="removeTodo(${i})"></i>
+                </div>`;
+            });
+        }
+        function addTodo() { currentTodos.push({text:"New Task", done:false}); renderTodos(); }
+        function removeTodo(i) { currentTodos.splice(i,1); renderTodos(); }
+        function toggleTodo(i) { currentTodos[i].done = !currentTodos[i].done; renderTodos(); }
 
+        // COLORS
+        function renderColorPicker() {
+            document.getElementById('colorContainer').innerHTML = COLORS.map(c => 
+                `<div class="color-dot bg-[${c}] shadow-sm border-slate-200" style="background-color: ${c}" onclick="setActiveColor('${c}')" data-col="${c}"></div>`
+            ).join('');
+        }
+        function setActiveColor(c) {
+            document.querySelectorAll('.color-dot').forEach(el => el.classList.toggle('selected', el.dataset.col === c));
+            document.getElementById('colorContainer').dataset.selected = c;
+        }
+
+        // WARD SELECTOR
+        function changeWard() {
+            toggleElement('wardModal', true);
+            const list = document.getElementById('wardList');
+            list.innerHTML = Array.from(wards).map(w => 
+                `<div onclick="selectWard('${w}')" class="p-3 mb-2 rounded-lg cursor-pointer font-bold transition flex justify-between ${w === currentWard ? 'bg-medical-50 text-medical-700 border border-medical-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}">
+                    ${w} ${w===currentWard ? '<i class="fa-solid fa-check"></i>':''}
+                </div>`
+            ).join('');
+        }
+        function createNewWard() {
+            const n = document.getElementById('newWardName').value.trim();
+            if(n) selectWard(n);
+        }
+        function selectWard(n) {
+            currentWard = n;
+            toggleElement('wardModal', false);
+            renderGrid();
+        }
+
+        // SAVE & DELETE
+        async function saveRecord() {
+            if(ROLE === 'chief' && !confirm("Saving in Chief Mode creates record in YOUR user DB, not original owner. Continue?")) return;
+            
             const btn = document.getElementById('btnSave'); btn.innerText = "Saving...";
+            
+            // Smart Name
+            let name = document.getElementById('editName').value.trim();
+            if(!name) {
+                const count = records.length + 1;
+                name = `Patient_${String(count).padStart(3, '0')}`;
+            }
+
             const payload = {
                 id: editingId || 'rec_' + Date.now(),
                 bed_number: document.getElementById('editBed').value,
                 hn: document.getElementById('editHN').value,
-                name: document.getElementById('editName').value,
+                name: name,
                 ward: currentWard,
                 details: document.getElementById('editDetails').value,
-                consult_units: JSON.stringify(Array.from(activeConsults)),
-                color_id: document.getElementById('colorContainer').dataset.selected || PASTEL_COLORS[0],
+                consult_units: JSON.stringify(activeConsults),
+                color_id: document.getElementById('colorContainer').dataset.selected || '#ffffff',
                 todo_list: JSON.stringify(currentTodos),
                 is_discharged: currentDischarged
             };
 
-            // Optimistic UI Update (Only for Resident Mode)
-            if(!isChiefMode) {
+            // Optimistic Update (Resident Only)
+            if (ROLE !== 'chief') {
+                const clean = {...payload, consult_units: activeConsults, todo_list: currentTodos};
                 const idx = records.findIndex(r => r.id === payload.id);
-                const cleanRecord = {...payload, consult_units: Array.from(activeConsults), todo_list: currentTodos};
-                if(idx > -1) records[idx] = cleanRecord; else records.push(cleanRecord);
+                if(idx > -1) records[idx] = clean; else records.push(clean);
                 renderGrid();
             }
             closeEditor();
 
-            await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'save', db: isChiefMode ? 'Resident1' : USER_DB, password: PASSWORD, ...payload}) });
-            if(isChiefMode) fetchAllChiefData();
-            btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Record`;
+            await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'save', db: DB_NAME, password: PASSWORD, ...payload}) });
+            if(ROLE === 'chief') fetchData(); // Refresh chief view
+            btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`;
         }
 
         async function deleteRecord() {
-            if(!confirm("Delete this patient?")) return;
-            // Optimistic
+            if(!confirm("Permanently delete?")) return;
             records = records.filter(r => r.id !== editingId);
             renderGrid();
             closeEditor();
-            await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: USER_DB, password: PASSWORD, id: editingId}) });
+            await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: DB_NAME, password: PASSWORD, id: editingId}) });
         }
 
-        // --- WARD MANIPULATION ---
-        function changeWard() {
-            toggleElement('wardModal', true);
-            document.getElementById('wardList').innerHTML = Array.from(wards).map(w => 
-                `<div onclick="selectWard('${w}')" class="p-3 border rounded-lg cursor-pointer hover:bg-slate-50 font-bold ${w === currentWard ? 'border-medical-500 bg-medical-50 text-medical-700' : 'border-slate-200'}">${w}</div>`
-            ).join('');
+        // EXPORT
+        function exportData() {
+            const active = records.filter(r => r.ward === currentWard && !r.is_discharged);
+            let txt = `WARD REPORT: ${currentWard}\nGenerated: ${new Date().toLocaleString()}\n\n`;
+            
+            active.sort((a,b) => parseInt(a.bed_number) - parseInt(b.bed_number));
+            active.forEach(r => {
+                txt += `----------------------------------------\n`;
+                txt += `BED ${r.bed_number} | ${r.name} (HN: ${r.hn})\n`;
+                const consults = r.consult_units.map(c => c.id).join(", ");
+                if(consults) txt += `CONSULTS: ${consults}\n`;
+                if(r.details) txt += `DETAILS:\n${r.details}\n`;
+                const pending = r.todo_list.filter(t => !t.done).map(t => `- [ ] ${t.text}`).join("\n");
+                if(pending) txt += `TODO:\n${pending}\n`;
+                txt += `\n`;
+            });
+
+            const blob = new Blob([txt], {type: "text/plain"});
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${currentWard}_Report.txt`;
+            a.click();
         }
 
-        function createNewWard() {
-            const name = document.getElementById('newWardName').value.trim();
-            if(name) { selectWard(name); }
-        }
-
-        function selectWard(w) {
-            currentWard = w;
-            toggleElement('wardModal', false);
-            updateWardsList();
-            renderGrid();
-        }
-
+        // UI UTILS
         function toggleElement(id, show) {
             const el = document.getElementById(id);
             if(show) el.classList.remove('hidden'); else el.classList.add('hidden');
         }
-
+        function toggleDischarge() {
+            currentDischarged = !currentDischarged;
+            const btn = document.getElementById('btnDischarge');
+            if(currentDischarged) { btn.innerText = "Discharged"; btn.className = "px-3 py-2 bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition"; }
+            else { btn.innerText = "Archive"; btn.className = "px-3 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold transition hover:bg-slate-200"; }
+        }
         function toggleFullScreen() {
             const el = document.getElementById('editDetails');
-            if(el.classList.contains('fixed')) {
-                el.classList.remove('fixed', 'inset-0', 'z-[60]', 'p-8', 'h-screen');
-                el.classList.add('h-32');
-            } else {
-                el.classList.add('fixed', 'inset-0', 'z-[60]', 'p-8', 'h-screen');
-                el.classList.remove('h-32');
-            }
+            const btn = document.getElementById('exitFsBtn');
+            el.classList.toggle('fs-mode');
+            btn.classList.toggle('hidden');
         }
     </script>
 </body>
