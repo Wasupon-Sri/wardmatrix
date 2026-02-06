@@ -132,40 +132,77 @@
         <button onclick="openEditor(null)" class="fixed bottom-6 right-6 w-14 h-14 bg-slate-800 text-white rounded-full shadow-2xl flex items-center justify-center z-30 hover:scale-105 transition hover:bg-medical-600"><i class="fa-solid fa-plus text-xl"></i></button>
     </div>
 
-    <!-- EDITOR MODAL -->
+    <!-- EDITOR MODAL (Redesigned) -->
     <div id="editorModal" class="fixed inset-0 z-50 hidden">
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeEditor()"></div>
-        <div class="absolute inset-x-0 bottom-0 top-12 md:top-10 md:inset-x-auto md:right-0 md:w-[650px] bg-white rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none flex flex-col shadow-2xl animate-slide-up">
-            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white z-10 rounded-t-2xl">
+        <!-- MD+ Width for Split Screen -->
+        <div class="absolute inset-x-0 bottom-0 top-10 md:top-12 md:inset-x-auto md:right-0 md:w-[90vw] md:max-w-6xl bg-white rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none flex flex-col shadow-2xl animate-slide-up">
+            
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white z-10 shrink-0">
                 <div class="flex items-center gap-3"><div id="editorBedBadge" class="bg-slate-800 text-white text-xl font-bold px-3 py-1 rounded-lg">#01</div><div><h3 class="text-lg font-bold text-slate-800 leading-none" id="editorTitle">New Patient</h3><p class="text-[10px] font-bold text-slate-400 uppercase mt-0.5">Admit Details</p></div></div>
                 <div class="flex gap-2"><button onclick="toggleDischarge()" id="btnDischarge" class="px-4 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold transition hover:bg-slate-200">Archive</button><button onclick="closeEditor()" class="w-9 h-9 rounded-full bg-slate-50 text-slate-400 hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-xmark text-lg"></i></button></div>
             </div>
-            <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-white">
+
+            <!-- Body (Split Layout) -->
+            <div class="flex-1 overflow-hidden flex flex-col md:flex-row bg-white">
                 
-                <!-- Chief Only: Resident Selector -->
-                <div id="residentSelectorDiv" class="hidden flex flex-col space-y-1 mb-2 p-3 bg-orange-50 border border-orange-200 rounded-xl">
-                    <label class="text-[10px] font-bold text-orange-600 uppercase flex items-center gap-1"><i class="fa-solid fa-crown"></i> Assign to Resident</label>
-                    <select id="residentSelect" class="w-full bg-white border border-orange-300 rounded-lg p-2 font-bold text-sm outline-none focus:ring-2 focus:ring-orange-200"></select>
+                <!-- LEFT PANEL: Medical Details (Desktop) -->
+                <div class="hidden md:flex md:w-2/3 flex-col bg-slate-50 border-r border-slate-200 relative">
+                    <div class="flex justify-between items-center p-4 border-b border-slate-200/50 bg-slate-50/50">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"><i class="fa-solid fa-file-medical mr-2"></i>Clinical Notes</label>
+                        <button onclick="toggleFullScreen()" class="text-medical-600 text-xs font-bold flex items-center gap-1 hover:text-medical-700"><i class="fa-solid fa-expand"></i> Fullscreen</button>
+                    </div>
+                    <textarea id="editDetailsDesktop" oninput="syncDetails(this)" class="flex-1 w-full bg-transparent p-6 text-slate-700 leading-relaxed outline-none resize-none font-sans text-base focus:bg-white transition" placeholder="• Chief Complaint&#10;• HPI&#10;• Physical Exam&#10;• Assessment & Plan..."></textarea>
                 </div>
 
-                <div class="flex gap-4 p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div class="w-24 space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Bed No.</label><select id="editBed" onchange="changeBedInEditor()" class="w-full bg-white border border-slate-200 rounded-lg p-2.5 font-bold text-center text-lg outline-none focus:border-medical-500 shadow-sm"></select></div>
-                    <div class="flex-1 space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Name (Auto-fill if empty)</label><input type="text" id="editName" class="w-full bg-white border border-slate-200 rounded-lg p-2.5 font-bold text-lg outline-none focus:border-medical-500 placeholder:font-normal placeholder:text-slate-300 shadow-sm" placeholder="e.g. Somchai Jai-dee"></div>
+                <!-- RIGHT PANEL: Metadata & Inputs -->
+                <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-white custom-scrollbar md:w-1/3">
+                    
+                    <!-- Chief Selector -->
+                    <div id="residentSelectorDiv" class="hidden flex flex-col space-y-1 mb-2 p-3 bg-orange-50 border border-orange-200 rounded-xl">
+                        <label class="text-[10px] font-bold text-orange-600 uppercase flex items-center gap-1"><i class="fa-solid fa-crown"></i> Assign to Resident</label>
+                        <select id="residentSelect" class="w-full bg-white border border-orange-300 rounded-lg p-2 font-bold text-sm outline-none focus:ring-2 focus:ring-orange-200"></select>
+                    </div>
+
+                    <!-- Basics -->
+                    <div class="flex gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div class="w-20 space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Bed</label><select id="editBed" onchange="changeBedInEditor()" class="w-full bg-white border border-slate-200 rounded-lg p-2 font-bold text-center text-lg outline-none focus:border-medical-500 shadow-sm"></select></div>
+                        <div class="flex-1 space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Name</label><input type="text" id="editName" class="w-full bg-white border border-slate-200 rounded-lg p-2 font-bold text-lg outline-none focus:border-medical-500 placeholder:font-normal placeholder:text-slate-300 shadow-sm" placeholder="e.g. Somchai"></div>
+                    </div>
+                    <div class="space-y-1 px-1"><label class="text-[10px] font-bold text-slate-400 uppercase">HN</label><input type="text" id="editHN" class="w-full bg-transparent border-b border-slate-200 p-2 font-mono text-sm outline-none focus:border-medical-500 transition" placeholder="HN 1234567"></div>
+                    
+                    <!-- Mobile Details (Visible Only on Mobile) -->
+                    <div class="md:hidden space-y-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase px-1 flex justify-between"><span>Medical Details</span><span class="text-medical-500" onclick="toggleFullScreen()">Expand</span></label>
+                        <textarea id="editDetailsMobile" oninput="syncDetails(this)" class="w-full bg-yellow-50/30 border border-yellow-200/50 rounded-xl p-4 text-slate-700 leading-relaxed outline-none min-h-[150px]" placeholder="Clinical notes..."></textarea>
+                    </div>
+
+                    <!-- Consults & Tags -->
+                    <div class="space-y-2"><label class="text-[10px] font-bold text-slate-400 uppercase px-1">Status Tag</label><div id="colorContainer" class="flex flex-wrap gap-2 px-1"></div></div>
+                    <div class="space-y-2"><label class="text-[10px] font-bold text-slate-400 uppercase px-1">Consults</label><div id="consultContainer" class="flex flex-wrap gap-2 px-1 mb-2"></div><div class="flex gap-2 px-1 items-center"><input type="text" id="customConsult" placeholder="Add Other..." class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-medical-500 flex-1"><button onclick="addCustomConsult()" class="bg-slate-800 text-white w-8 h-8 rounded-lg text-xs font-bold"><i class="fa-solid fa-plus"></i></button></div></div>
+                    
+                    <!-- To-Do -->
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div class="flex justify-between items-center mb-3"><h4 class="font-bold text-xs text-slate-500 uppercase"><i class="fa-solid fa-list-check mr-1"></i> To-Do List</h4><button onclick="addTodo()" class="w-6 h-6 rounded bg-white border border-slate-200 text-medical-600 flex items-center justify-center hover:shadow-sm"><i class="fa-solid fa-plus text-xs"></i></button></div>
+                        <div id="todoContainer" class="space-y-2"></div>
+                        <datalist id="taskSuggestions"><option value="Follow Lab"><option value="Film Chest"><option value="D/C Summary"><option value="Family Meeting"><option value="Consult Cardio"><option value="Review Meds"><option value="Order CT Scan"><option value="Prepare OR"><option value="Sputum Exam"><option value="Keep NPO"><option value="Off Foley"><option value="Change Antibiotic"></datalist>
+                    </div>
+
+                    <div class="pt-4"><button onclick="deleteRecord()" id="btnDelete" class="w-full text-rose-400 text-xs font-bold py-3 hover:text-rose-600 transition flex items-center justify-center gap-2"><i class="fa-regular fa-trash-can"></i> Delete Permanently</button></div>
                 </div>
-                <div class="space-y-1 px-1"><label class="text-[10px] font-bold text-slate-400 uppercase">HN (Optional)</label><input type="text" id="editHN" class="w-full bg-transparent border-b border-slate-200 p-2 font-mono text-sm outline-none focus:border-medical-500 transition" placeholder="HN 1234567"></div>
-                <div class="space-y-2"><label class="text-[10px] font-bold text-slate-400 uppercase px-1">Patient Status Tag</label><div id="colorContainer" class="flex flex-wrap gap-2 px-1"></div></div>
-                <div class="space-y-2"><label class="text-[10px] font-bold text-slate-400 uppercase px-1">Consultation Units</label><div id="consultContainer" class="flex flex-wrap gap-2 px-1 mb-2"></div><div class="flex gap-2 px-1 items-center"><input type="text" id="customConsult" placeholder="Add Other (e.g. Psych)" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-medical-500 w-40"><button onclick="addCustomConsult()" class="bg-slate-800 text-white w-8 h-8 rounded-lg text-xs font-bold hover:bg-slate-700"><i class="fa-solid fa-plus"></i></button></div></div>
-                <div class="space-y-2 group relative"><label class="text-[10px] font-bold text-slate-400 uppercase px-1 flex justify-between"><span>Medical Details</span><span class="text-medical-500 cursor-pointer opacity-0 group-hover:opacity-100 transition" onclick="toggleFullScreen()"><i class="fa-solid fa-expand mr-1"></i>Fullscreen</span></label><textarea id="editDetails" ondblclick="toggleFullScreen()" class="w-full bg-yellow-50/30 border border-yellow-200/50 rounded-xl p-4 text-slate-700 leading-relaxed outline-none focus:ring-2 focus:ring-yellow-200/50 transition resize-y min-h-[180px] font-sans" placeholder="• Active Issues&#10;• Plan&#10;• Pending Results..."></textarea><button id="exitFsBtn" onclick="toggleFullScreen()" class="hidden fixed top-6 right-6 z-[10000] bg-slate-900 text-white px-6 py-3 rounded-full text-sm font-bold shadow-2xl hover:scale-105 transition flex items-center gap-2"><i class="fa-solid fa-compress"></i> Exit A4 Mode</button></div>
-                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                    <div class="flex justify-between items-center mb-3"><h4 class="font-bold text-xs text-slate-500 uppercase"><i class="fa-solid fa-list-check mr-1"></i> To-Do List</h4><button onclick="addTodo()" class="w-6 h-6 rounded bg-white border border-slate-200 text-medical-600 flex items-center justify-center hover:shadow-sm"><i class="fa-solid fa-plus text-xs"></i></button></div>
-                    <div id="todoContainer" class="space-y-2"></div>
-                    <datalist id="taskSuggestions"><option value="Follow Lab"><option value="Film Chest"><option value="D/C Summary"><option value="Family Meeting"><option value="Consult Cardio"><option value="Review Meds"><option value="Order CT Scan"><option value="Prepare OR"></datalist>
-                </div>
-                <div class="pt-4"><button onclick="deleteRecord()" id="btnDelete" class="w-full text-rose-400 text-xs font-bold py-3 hover:text-rose-600 transition flex items-center justify-center gap-2"><i class="fa-regular fa-trash-can"></i> Delete Permanently</button></div>
             </div>
-            <div class="p-4 bg-white border-t border-slate-100 pb-8"><button onclick="saveRecord()" id="btnSave" class="w-full bg-slate-800 text-white text-lg font-bold py-4 rounded-xl shadow-lg active:scale-95 transition flex items-center justify-center gap-2 hover:bg-slate-700"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button></div>
+
+            <!-- Footer -->
+            <div class="p-4 bg-white border-t border-slate-100 pb-8 shrink-0">
+                <button onclick="saveRecord()" id="btnSave" class="w-full bg-slate-800 text-white text-lg font-bold py-4 rounded-xl shadow-lg active:scale-95 transition flex items-center justify-center gap-2 hover:bg-slate-700"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+            </div>
         </div>
     </div>
+
+    <!-- Fullscreen Overlay -->
+    <textarea id="fullscreenEditor" class="hidden fs-mode focus:outline-none" placeholder="Medical Details..."></textarea>
+    <button id="exitFsBtn" onclick="toggleFullScreen()" class="hidden fixed top-6 right-6 z-[10000] bg-slate-900 text-white px-6 py-3 rounded-full text-sm font-bold shadow-2xl hover:scale-105 transition flex items-center gap-2"><i class="fa-solid fa-compress"></i> Exit Fullscreen</button>
 
     <!-- Ward Modal -->
     <div id="wardModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
@@ -214,7 +251,6 @@
                     PASSWORD = p;
                     document.getElementById('authOverlay').classList.add('hidden');
                     document.getElementById('appContainer').classList.remove('hidden');
-                    // Initial fetch
                     await fetchData();
                     changeWard(); 
                     startAutomation();
@@ -231,12 +267,9 @@
         async function fetchData(silent = false) {
             if(!silent) document.getElementById('btnRefresh').classList.add('animate-spin');
             if (ROLE === 'chief') {
-                // Chief Mode: Fetch User List First
                 const listRes = await fetch(`${API_URL}?action=admin_list_users`);
                 const listJson = await listRes.json();
-                // Filter only residents for assignment
                 availableResidents = listJson.users.filter(u => u.role === 'resident').map(u => u.name);
-                
                 const promises = listJson.users.map(u => fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'read', db: u.name, password: PASSWORD}) }).then(r => r.json()).then(data => data.map(rec => ({...processRecord(rec), owner: u.name}))).catch(() => []));
                 const results = await Promise.all(promises);
                 records = results.flat();
@@ -285,7 +318,13 @@
                         const bg = r.color_id || '#ffffff';
                         const consultChips = r.consult_units.slice(0, 3).map(c => `<i class="fa-solid ${c.icon||'fa-circle'} text-[10px] text-slate-500"></i>`).join(' ');
                         const pendingTodos = r.todo_list.filter(t => !t.done);
-                        const todoHtml = pendingTodos.length > 0 ? `<div class="mt-2 text-[10px] bg-white/60 p-1.5 rounded border border-slate-100 truncate"><i class="fa-solid fa-circle-exclamation text-orange-400 mr-1"></i>${pendingTodos[0].text} ${pendingTodos.length>1?'+'+(pendingTodos.length-1):''}</div>` : '';
+                        let todoHtml = "";
+                        if (pendingTodos.length > 0) {
+                            todoHtml = `<div class="mt-2 pt-2 border-t border-slate-100/50 flex flex-wrap gap-1">`;
+                            pendingTodos.slice(0, 2).forEach(t => { todoHtml += `<div class="text-[9px] px-1.5 py-0.5 bg-white/70 border border-slate-200/50 rounded text-slate-600 truncate max-w-[80px]">${t.text}</div>`; });
+                            if (pendingTodos.length > 2) todoHtml += `<div class="text-[9px] px-1.5 py-0.5 bg-orange-100 text-orange-600 border border-orange-200 rounded font-bold">+${pendingTodos.length - 2}</div>`;
+                            todoHtml += `</div>`;
+                        }
                         const ownerTag = (ROLE === 'chief' && r.owner) ? `<div class="absolute top-0 right-0 bg-slate-800 text-white text-[9px] px-2 py-0.5 rounded-bl-lg z-10 font-bold opacity-80">${r.owner.substr(0,4)}</div>` : '';
                         grid.innerHTML += `<div onclick="handleCardClick('${r.id}', ${i})" class="bed-card cursor-pointer group ${isSelected?'selected':''}" style="background: linear-gradient(to bottom, ${bg} 0%, #ffffff 60%)">${ownerTag}${isSelected?'<div class="absolute top-2 right-2 text-medical-600"><i class="fa-solid fa-circle-check text-lg"></i></div>':''}<div class="p-3 flex-1 flex flex-col relative"><div class="flex justify-between items-start mb-1"><span class="text-2xl font-bold text-slate-800">${i}</span><div class="flex gap-1 pt-1">${consultChips}</div></div><div class="mt-1"><h4 class="font-bold text-sm text-slate-700 leading-tight truncate">${r.name||'Unknown'}</h4><p class="text-[10px] font-mono text-slate-400 mt-0.5">HN: ${r.hn||'-'}</p></div>${todoHtml}</div></div>`;
                     });
@@ -325,7 +364,6 @@
             toggleElement('editorModal', true); editingId = id; currentTodos = []; activeConsults = []; currentDischarged = false; originalOwner = null;
             const sel = document.getElementById('editBed'); sel.innerHTML = ""; for(let i=1; i<=100; i++) sel.innerHTML += `<option value="${i}">${i}</option>`;
             
-            // Chief Selector Logic
             if(ROLE === 'chief') {
                 const resSel = document.getElementById('residentSelect');
                 document.getElementById('residentSelectorDiv').classList.remove('hidden');
@@ -337,12 +375,14 @@
                 if(ROLE === 'chief') document.getElementById('residentSelect').value = originalOwner;
                 
                 document.getElementById('editorTitle').innerText = "Edit Patient"; document.getElementById('editBed').value = r.bed_number; document.getElementById('editorBedBadge').innerText = `#${r.bed_number}`;
-                document.getElementById('editHN').value = r.hn; document.getElementById('editName').value = r.name; document.getElementById('editDetails').value = r.details;
+                document.getElementById('editHN').value = r.hn; document.getElementById('editName').value = r.name; 
+                setDetails(r.details);
                 activeConsults = r.consult_units ? JSON.parse(JSON.stringify(r.consult_units)) : []; currentTodos = r.todo_list ? JSON.parse(JSON.stringify(r.todo_list)) : [];
                 setActiveColor(r.color_id); toggleElement('btnDelete', true);
             } else {
                 document.getElementById('editorTitle').innerText = "Admit Patient"; document.getElementById('editBed').value = bedNum || 1; document.getElementById('editorBedBadge').innerText = `#${bedNum||1}`;
-                document.getElementById('editHN').value = ""; document.getElementById('editName').value = ""; document.getElementById('editDetails').value = "";
+                document.getElementById('editHN').value = ""; document.getElementById('editName').value = ""; 
+                setDetails("");
                 setActiveColor('#ffffff'); toggleElement('btnDelete', false);
                 currentTodos = [{text: "", done: false}, {text: "", done: false}];
                 if(ROLE === 'chief') originalOwner = document.getElementById('residentSelect').value;
@@ -351,6 +391,19 @@
         }
         function closeEditor() { toggleElement('editorModal', false); editingId = null; }
         function changeBedInEditor() { document.getElementById('editorBedBadge').innerText='#'+document.getElementById('editBed').value; saveRecord(true); }
+
+        // SYNC MULTIPLE TEXTAREAS (Desktop/Mobile/Fullscreen)
+        function setDetails(text) {
+            document.getElementById('editDetailsDesktop').value = text || "";
+            document.getElementById('editDetailsMobile').value = text || "";
+            document.getElementById('fullscreenEditor').value = text || "";
+        }
+        function syncDetails(el) {
+            const val = el.value;
+            if(el.id !== 'editDetailsDesktop') document.getElementById('editDetailsDesktop').value = val;
+            if(el.id !== 'editDetailsMobile') document.getElementById('editDetailsMobile').value = val;
+            if(el.id !== 'fullscreenEditor') document.getElementById('fullscreenEditor').value = val;
+        }
 
         function renderConsults() {
             const div = document.getElementById('consultContainer'); div.innerHTML = "";
@@ -384,6 +437,7 @@
 
             let name = targetName; if(!name) { const count = records.length + 1; name = `Patient_${String(count).padStart(3, '0')}`; }
             const validTodos = currentTodos.filter(t => t.text.trim() !== "");
+            const detailsVal = document.getElementById('editDetailsDesktop').value;
 
             const p = {
                 id: editingId || 'rec_' + Date.now(),
@@ -391,26 +445,22 @@
                 hn: document.getElementById('editHN').value,
                 name: name,
                 ward: currentWard,
-                details: document.getElementById('editDetails').value,
+                details: detailsVal,
                 consult_units: JSON.stringify(activeConsults),
                 color_id: document.getElementById('colorContainer').dataset.selected || '#ffffff',
                 todo_list: JSON.stringify(validTodos),
                 is_discharged: currentDischarged
             };
 
-            // TARGET LOGIC
             let targetDB = DB_NAME;
             if (ROLE === 'chief') {
                 targetDB = document.getElementById('residentSelect').value;
                 if(!targetDB) { alert("Please select a resident to assign."); return; }
-                
-                // MOVE LOGIC: If Owner Changed -> Delete from Old
                 if(originalOwner && originalOwner !== targetDB) {
                     await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: originalOwner, password: PASSWORD, requester: DB_NAME, id: p.id}) });
                 }
             }
 
-            // Requester Auth
             const payload = { action: 'save', db: targetDB, requester: DB_NAME, password: PASSWORD, ...p };
 
             if (ROLE !== 'chief') {
@@ -437,7 +487,28 @@
         function manualRefresh() { fetchData(); }
         function toggleElement(id, show) { const el = document.getElementById(id); if(show) el.classList.remove('hidden'); else el.classList.add('hidden'); }
         function toggleDischarge() { currentDischarged = !currentDischarged; const btn = document.getElementById('btnDischarge'); btn.innerText = currentDischarged ? "Discharged" : "Archive"; btn.className = currentDischarged ? "px-4 py-2 bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition" : "px-4 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold transition hover:bg-slate-200"; }
-        function toggleFullScreen() { const el = document.getElementById('editDetails'); const btn = document.getElementById('exitFsBtn'); el.classList.toggle('fs-mode'); btn.classList.toggle('hidden'); }
+        
+        function toggleFullScreen() { 
+            const fsEl = document.getElementById('fullscreenEditor');
+            const exitBtn = document.getElementById('exitFsBtn');
+            const isHidden = fsEl.classList.contains('hidden');
+            
+            if(isHidden) {
+                fsEl.classList.remove('hidden');
+                exitBtn.classList.remove('hidden');
+                // Sync current value to fullscreen
+                fsEl.value = document.getElementById('editDetailsDesktop').value;
+                fsEl.focus();
+            } else {
+                fsEl.classList.add('hidden');
+                exitBtn.classList.add('hidden');
+                // Sync back
+                syncDetails(fsEl);
+            }
+        }
+        
+        // Listen for sync on fullscreen too
+        document.getElementById('fullscreenEditor').addEventListener('input', function() { syncDetails(this); });
     </script>
 </body>
 </html>
