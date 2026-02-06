@@ -414,9 +414,10 @@
             const toast = document.getElementById('saveToast');
             const toastMsg = document.getElementById('saveToastMsg');
             
-            clearTimeout(toastTimer);
+            clearTimeout(toastTimer); // Clear pending hides
             
             toastMsg.innerText = msg;
+            // Set to visible state
             toast.className = `fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[10001] px-6 py-3 rounded-full text-white font-bold shadow-2xl transition-all duration-300 flex items-center gap-3 translate-y-0 opacity-100 pointer-events-none ${isSuccess ? 'bg-emerald-600' : 'bg-slate-900'}`;
             
             if (isSuccess) {
@@ -426,8 +427,11 @@
 
         function hideToast() {
             const toast = document.getElementById('saveToast');
-            toast.classList.remove('translate-y-0', 'opacity-100');
-            toast.classList.add('translate-y-10', 'opacity-0');
+            // Preserve the background color currently on the element
+            const bgClass = toast.classList.contains('bg-emerald-600') ? 'bg-emerald-600' : 'bg-slate-900';
+            
+            // Overwrite class to hidden state
+            toast.className = `fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[10001] px-6 py-3 rounded-full text-white font-bold shadow-2xl transition-all duration-300 flex items-center gap-3 translate-y-10 opacity-0 pointer-events-none ${bgClass}`;
         }
 
         async function saveRecord(silent = false) {
@@ -445,6 +449,7 @@
             const validTodos = currentTodos.filter(t => t.text.trim() !== "");
             
             // If it is an AUTO-SAVE (silent) and the main fields are EMPTY, do not save.
+            // This prevents creating "Phantom" admissions when a user just clicks a bed and waits.
             if (silent && !editingId && !targetName && !targetHN && !detailsVal && activeConsults.length === 0 && validTodos.length === 0) {
                 console.log("Skipping auto-save: Empty new record.");
                 return;
