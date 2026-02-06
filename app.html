@@ -23,15 +23,20 @@
         }
     </script>
     <style>
-        body { background-color: #f1f5f9; color: #334155; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #f8fafc; color: #334155; -webkit-tap-highlight-color: transparent; }
         .glass-header { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid #e2e8f0; }
         
+        /* BED CARDS */
         .bed-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: var(--theme-shadow-card); transition: all 0.2s; min-height: 140px; display: flex; flex-direction: column; position: relative; overflow: hidden; }
         .bed-card:hover { border-color: #cbd5e1; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
         .bed-card.selected { border: 2px solid #0ea5e9; background-color: #f0f9ff; }
-        .bed-card.vacant { background: #f8fafc; border-style: dashed; justify-content: center; align-items: center; opacity: 0.6; min-height: 100px; }
-        .bed-card.vacant:hover { opacity: 1; border-color: #0ea5e9; background: #f0f9ff; cursor: pointer; }
         
+        /* High Contrast Vacant Bed */
+        .bed-card.vacant { background: #f1f5f9; border: 1px solid #cbd5e1; border-style: dashed; justify-content: center; align-items: center; opacity: 0.8; min-height: 100px; }
+        .bed-card.vacant:hover { opacity: 1; border-color: #94a3b8; background: #e2e8f0; cursor: pointer; }
+        .bed-card.vacant span { color: #94a3b8 !important; }
+        
+        /* Fullscreen A4 Editor */
         .fs-mode { 
             position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 9999 !important; 
             width: 100vw !important; height: 100vh !important; 
@@ -53,6 +58,11 @@
         .grid-1 { grid-template-columns: repeat(1, 1fr); } .grid-2 { grid-template-columns: repeat(2, 1fr); }
         .grid-3 { grid-template-columns: repeat(3, 1fr); } .grid-4 { grid-template-columns: repeat(4, 1fr); }
         .grid-5 { grid-template-columns: repeat(5, 1fr); } .grid-6 { grid-template-columns: repeat(6, 1fr); }
+        
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #e2e8f0; border-radius: 20px; }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden text-sm">
@@ -79,23 +89,38 @@
     </div>
 
     <!-- MAIN APP -->
-    <div id="appContainer" class="hidden flex-1 flex flex-col h-full bg-[#f1f5f9]">
+    <div id="appContainer" class="hidden flex-1 flex flex-col h-full bg-[#f8fafc]">
+        
+        <!-- Header -->
         <header class="glass-header h-16 flex items-center justify-between px-4 shrink-0 z-20">
             <div class="flex items-center gap-3">
-                <button onclick="toggleGridMenu()" class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-600 flex items-center justify-center shadow-sm hover:bg-slate-50 hover:text-medical-600 transition" title="Grid Settings"><i class="fa-solid fa-table-cells"></i></button>
+                <button onclick="toggleGridMenu()" class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-600 flex items-center justify-center shadow-sm hover:bg-slate-50 hover:text-medical-600 transition" title="Grid Settings">
+                    <i class="fa-solid fa-table-cells"></i>
+                </button>
                 <div class="leading-tight">
                     <h2 class="font-bold text-lg text-slate-800" id="headerWard">General Ward</h2>
                     <span id="roleBadge" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Resident View</span>
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                 <div class="bg-slate-200/50 p-1 rounded-lg flex text-xs font-bold text-slate-500 mr-2">
+                 <!-- View Switcher -->
+                 <div class="bg-slate-100 p-1 rounded-lg flex text-xs font-bold text-slate-500 mr-2 border border-slate-200">
                      <button onclick="switchView('grid')" id="viewBtnGrid" class="px-3 py-1.5 rounded-md bg-white shadow-sm text-medical-700 transition">Grid</button>
                      <button onclick="switchView('matrix')" id="viewBtnMatrix" class="px-3 py-1.5 rounded-md hover:bg-white/50 transition">Consults</button>
+                     <button onclick="switchView('discharged')" id="viewBtnDischarged" class="px-3 py-1.5 rounded-md hover:bg-white/50 text-slate-400 hover:text-rose-500 transition">Discharged</button>
                  </div>
-                 <button onclick="changeWard()" class="bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold shadow-sm flex items-center gap-2 hover:bg-slate-50"><i class="fa-solid fa-right-left"></i> <span class="hidden sm:inline">Change Ward</span></button>
-                 <button onclick="toggleSelectMode()" id="btnSelectMode" class="w-10 h-10 rounded-lg bg-white border border-slate-200 text-slate-500 flex items-center justify-center hover:text-medical-600 shadow-sm" title="Select Multiple"><i class="fa-regular fa-square-check"></i></button>
-                 <button onclick="manualRefresh()" id="btnRefresh" class="w-10 h-10 rounded-lg bg-slate-800 text-white flex items-center justify-center shadow-md hover:bg-slate-700"><i class="fa-solid fa-rotate"></i></button>
+                 
+                 <button onclick="changeWard()" class="bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold shadow-sm flex items-center gap-2 hover:bg-slate-50">
+                    <i class="fa-solid fa-right-left"></i> <span class="hidden sm:inline">Change Ward</span>
+                 </button>
+                 
+                 <button onclick="toggleSelectMode()" id="btnSelectMode" class="w-10 h-10 rounded-lg bg-white border border-slate-200 text-slate-500 flex items-center justify-center hover:text-medical-600 shadow-sm" title="Select Multiple">
+                    <i class="fa-regular fa-square-check"></i>
+                 </button>
+                 
+                 <button onclick="manualRefresh()" id="btnRefresh" class="w-10 h-10 rounded-lg bg-slate-800 text-white flex items-center justify-center shadow-md hover:bg-slate-700">
+                    <i class="fa-solid fa-rotate"></i>
+                 </button>
             </div>
         </header>
 
@@ -109,7 +134,7 @@
             </div>
         </div>
 
-        <!-- Grid Settings -->
+        <!-- Grid Settings Dropdown -->
         <div id="gridMenu" class="hidden absolute top-16 left-4 z-40 bg-white rounded-xl shadow-xl border border-slate-100 p-4 w-64 animate-fade-in">
             <h4 class="text-[10px] font-bold text-slate-400 uppercase mb-3">Grid Layout (Columns)</h4>
             <div class="grid grid-cols-3 gap-2 mb-3">
@@ -121,44 +146,72 @@
                 <button onclick="setGrid(6)" class="p-2 border rounded hover:bg-slate-50 text-xs font-bold">6 Cols</button>
             </div>
             <h4 class="text-[10px] font-bold text-slate-400 uppercase mb-2">Total Beds</h4>
-            <div class="flex items-center gap-2"><input type="range" min="10" max="100" step="1" id="bedCountSlider" oninput="updateBedCount(this.value)" class="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600"><span id="bedCountLabel" class="text-xs font-bold w-8 text-center">36</span></div>
+            <div class="flex items-center gap-2">
+                <input type="range" min="10" max="100" step="1" id="bedCountSlider" oninput="updateBedCount(this.value)" class="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600">
+                <span id="bedCountLabel" class="text-xs font-bold w-8 text-center">36</span>
+            </div>
         </div>
 
+        <!-- Main Content Area -->
         <main class="flex-1 overflow-y-auto p-4 md:p-6 relative" id="mainScroll">
-            <div id="viewGrid" class="block"><div id="bedGrid" class="grid gap-3 pb-20 transition-all duration-300"></div></div>
-            <div id="viewMatrix" class="hidden pb-20"><div id="matrixContainer" class="flex gap-4 overflow-x-auto pb-6 snap-x"></div></div>
+            <!-- 1. BED GRID VIEW -->
+            <div id="viewGrid" class="block">
+                <div id="bedGrid" class="grid gap-3 pb-20 transition-all duration-300"></div>
+            </div>
+            
+            <!-- 2. CONSULTATION MATRIX VIEW -->
+            <div id="viewMatrix" class="hidden pb-20">
+                <div id="matrixContainer" class="flex gap-4 overflow-x-auto pb-6 snap-x"></div>
+            </div>
+
+            <!-- 3. DISCHARGED VIEW -->
+            <div id="viewDischarged" class="hidden pb-20">
+                <h3 class="text-lg font-bold text-slate-600 mb-4 flex items-center gap-2"><i class="fa-solid fa-box-archive"></i> Archived Patients</h3>
+                <div id="dischargedList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+            </div>
         </main>
 
-        <button onclick="openEditor(null)" class="fixed bottom-6 right-6 w-14 h-14 bg-slate-800 text-white rounded-full shadow-2xl flex items-center justify-center z-30 hover:scale-105 transition hover:bg-medical-600"><i class="fa-solid fa-plus text-xl"></i></button>
+        <!-- FAB -->
+        <button onclick="openEditor(null)" class="fixed bottom-6 right-6 w-14 h-14 bg-slate-800 text-white rounded-full shadow-2xl flex items-center justify-center z-30 hover:scale-105 transition hover:bg-medical-600">
+            <i class="fa-solid fa-plus text-xl"></i>
+        </button>
+
     </div>
 
-    <!-- EDITOR MODAL (Redesigned) -->
+    <!-- EDITOR MODAL (SPLIT SCREEN LAYOUT) -->
     <div id="editorModal" class="fixed inset-0 z-50 hidden">
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeEditor()"></div>
-        <!-- MD+ Width for Split Screen -->
-        <div class="absolute inset-x-0 bottom-0 top-10 md:top-12 md:inset-x-auto md:right-0 md:w-[90vw] md:max-w-6xl bg-white rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none flex flex-col shadow-2xl animate-slide-up">
+        <!-- Maximize width for horizontal view -->
+        <div class="absolute inset-x-0 bottom-0 top-10 md:top-12 md:inset-x-auto md:right-0 md:w-[90vw] md:max-w-[1400px] bg-white rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none flex flex-col shadow-2xl animate-slide-up">
             
             <!-- Header -->
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white z-10 shrink-0">
                 <div class="flex items-center gap-3"><div id="editorBedBadge" class="bg-slate-800 text-white text-xl font-bold px-3 py-1 rounded-lg">#01</div><div><h3 class="text-lg font-bold text-slate-800 leading-none" id="editorTitle">New Patient</h3><p class="text-[10px] font-bold text-slate-400 uppercase mt-0.5">Admit Details</p></div></div>
-                <div class="flex gap-2"><button onclick="toggleDischarge()" id="btnDischarge" class="px-4 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold transition hover:bg-slate-200">Archive</button><button onclick="closeEditor()" class="w-9 h-9 rounded-full bg-slate-50 text-slate-400 hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+                <div class="flex gap-2">
+                    <button onclick="toggleDischarge()" id="btnDischarge" class="px-4 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold transition hover:bg-slate-200">Archive</button>
+                    <button onclick="closeEditor()" class="w-9 h-9 rounded-full bg-slate-50 text-slate-400 hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-xmark text-lg"></i></button>
+                </div>
             </div>
 
-            <!-- Body (Split Layout) -->
+            <!-- Body (Horizontal Split) -->
             <div class="flex-1 overflow-hidden flex flex-col md:flex-row bg-white">
                 
-                <!-- LEFT PANEL: Medical Details (Desktop) -->
-                <div class="hidden md:flex md:w-2/3 flex-col bg-slate-50 border-r border-slate-200 relative">
-                    <div class="flex justify-between items-center p-4 border-b border-slate-200/50 bg-slate-50/50">
-                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"><i class="fa-solid fa-file-medical mr-2"></i>Clinical Notes</label>
-                        <button onclick="toggleFullScreen()" class="text-medical-600 text-xs font-bold flex items-center gap-1 hover:text-medical-700"><i class="fa-solid fa-expand"></i> Fullscreen</button>
+                <!-- LEFT PANEL: Medical Details (Expanded) -->
+                <div class="hidden md:flex md:w-[65%] flex-col bg-slate-50/50 border-r border-slate-200 relative">
+                    <div class="flex justify-between items-center p-3 border-b border-slate-200/50 bg-white">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-rose-500"></span> Clinical Notes
+                        </label>
+                        <button onclick="toggleFullScreen()" class="text-medical-600 text-xs font-bold flex items-center gap-1 hover:text-medical-700 bg-medical-50 px-2 py-1 rounded">
+                            <i class="fa-solid fa-expand"></i> Fullscreen
+                        </button>
                     </div>
-                    <!-- Added ondblclick here -->
-                    <textarea id="editDetailsDesktop" ondblclick="toggleFullScreen()" oninput="syncDetails(this)" class="flex-1 w-full bg-transparent p-6 text-slate-700 leading-relaxed outline-none resize-none font-sans text-base focus:bg-white transition" placeholder="• Chief Complaint&#10;• HPI&#10;• Physical Exam&#10;• Assessment & Plan..."></textarea>
+                    <!-- Double Click enabled here -->
+                    <textarea id="editDetailsDesktop" ondblclick="toggleFullScreen()" oninput="syncDetails(this)" class="flex-1 w-full bg-transparent p-6 text-slate-700 leading-relaxed outline-none resize-none font-sans text-lg focus:bg-white transition" placeholder="• Chief Complaint&#10;• Active Issues&#10;• Plan..."></textarea>
                 </div>
 
-                <!-- RIGHT PANEL: Metadata & Inputs -->
-                <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-white custom-scrollbar md:w-1/3">
+                <!-- RIGHT PANEL: Metadata Sidebar -->
+                <div class="flex-1 overflow-y-auto p-5 space-y-6 bg-white custom-scrollbar md:w-[35%]">
                     
                     <!-- Chief Selector -->
                     <div id="residentSelectorDiv" class="hidden flex flex-col space-y-1 mb-2 p-3 bg-orange-50 border border-orange-200 rounded-xl">
@@ -167,13 +220,13 @@
                     </div>
 
                     <!-- Basics -->
-                    <div class="flex gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                        <div class="w-20 space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Bed</label><select id="editBed" onchange="changeBedInEditor()" class="w-full bg-white border border-slate-200 rounded-lg p-2 font-bold text-center text-lg outline-none focus:border-medical-500 shadow-sm"></select></div>
-                        <div class="flex-1 space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Name</label><input type="text" id="editName" class="w-full bg-white border border-slate-200 rounded-lg p-2 font-bold text-lg outline-none focus:border-medical-500 placeholder:font-normal placeholder:text-slate-300 shadow-sm" placeholder="e.g. Somchai"></div>
+                    <div class="flex gap-4">
+                        <div class="w-20 space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Bed</label><select id="editBed" onchange="changeBedInEditor()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-bold text-center text-lg outline-none focus:border-medical-500"></select></div>
+                        <div class="flex-1 space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Name</label><input type="text" id="editName" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-bold text-lg outline-none focus:border-medical-500 placeholder:font-normal placeholder:text-slate-300" placeholder="e.g. Somchai"></div>
                     </div>
-                    <div class="space-y-1 px-1"><label class="text-[10px] font-bold text-slate-400 uppercase">HN</label><input type="text" id="editHN" class="w-full bg-transparent border-b border-slate-200 p-2 font-mono text-sm outline-none focus:border-medical-500 transition" placeholder="HN 1234567"></div>
+                    <div class="space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase">HN</label><input type="text" id="editHN" class="w-full bg-transparent border-b border-slate-200 p-2 font-mono text-sm outline-none focus:border-medical-500 transition" placeholder="HN 1234567"></div>
                     
-                    <!-- Mobile Details (Visible Only on Mobile) -->
+                    <!-- Mobile Details Fallback -->
                     <div class="md:hidden space-y-2">
                         <label class="text-[10px] font-bold text-slate-400 uppercase px-1 flex justify-between"><span>Medical Details</span><span class="text-medical-500" onclick="toggleFullScreen()">Expand</span></label>
                         <textarea id="editDetailsMobile" oninput="syncDetails(this)" class="w-full bg-yellow-50/30 border border-yellow-200/50 rounded-xl p-4 text-slate-700 leading-relaxed outline-none min-h-[150px]" placeholder="Clinical notes..."></textarea>
@@ -213,7 +266,7 @@
         </div>
     </div>
 
-    <!-- Ward Modal -->
+    <!-- Ward Modal (With Delete) -->
     <div id="wardModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
         <div class="bg-white rounded-2xl w-80 p-6 shadow-2xl animate-fade-in">
             <h3 class="font-bold text-lg mb-4 text-slate-800">Select Ward</h3>
@@ -302,11 +355,22 @@
         function switchView(view) {
             document.getElementById('viewGrid').classList.toggle('hidden', view !== 'grid');
             document.getElementById('viewMatrix').classList.toggle('hidden', view !== 'matrix');
+            document.getElementById('viewDischarged').classList.toggle('hidden', view !== 'discharged');
+            
+            // Button Styles
             document.getElementById('viewBtnGrid').className = view === 'grid' ? "px-3 py-1.5 rounded-md bg-white shadow-sm text-medical-700 transition" : "px-3 py-1.5 rounded-md hover:bg-white/50 transition";
             document.getElementById('viewBtnMatrix').className = view === 'matrix' ? "px-3 py-1.5 rounded-md bg-white shadow-sm text-medical-700 transition" : "px-3 py-1.5 rounded-md hover:bg-white/50 transition";
+            document.getElementById('viewBtnDischarged').className = view === 'discharged' ? "px-3 py-1.5 rounded-md bg-white shadow-sm text-rose-500 transition" : "px-3 py-1.5 rounded-md hover:bg-white/50 text-slate-400 hover:text-rose-500 transition";
+            
             renderView();
         }
-        function renderView() { if(!document.getElementById('viewGrid').classList.contains('hidden')) renderGrid(); else renderMatrix(); }
+        function renderView() { 
+            if(!document.getElementById('viewGrid').classList.contains('hidden')) renderGrid();
+            else if(!document.getElementById('viewMatrix').classList.contains('hidden')) renderMatrix();
+            else renderDischarged();
+        }
+
+        // 1. GRID SYSTEM
         function toggleGridMenu() { document.getElementById('gridMenu').classList.toggle('hidden'); }
         function setGrid(cols) { gridCols = cols; localStorage.setItem('ward_grid_cols', cols); renderGrid(); toggleGridMenu(); }
         function updateBedCount(val) { totalBeds = parseInt(val); document.getElementById('bedCountLabel').innerText = val; localStorage.setItem('ward_total_beds', val); renderGrid(); }
@@ -327,20 +391,99 @@
                         const bg = r.color_id || '#ffffff';
                         const consultChips = r.consult_units.slice(0, 3).map(c => `<i class="fa-solid ${c.icon||'fa-circle'} text-[10px] text-slate-500"></i>`).join(' ');
                         const pendingTodos = r.todo_list.filter(t => !t.done);
+                        
+                        // New To-Do Chip Design (Red Box Style)
                         let todoHtml = "";
                         if (pendingTodos.length > 0) {
-                            todoHtml = `<div class="mt-2 pt-2 border-t border-slate-100/50 flex flex-wrap gap-1">`;
-                            pendingTodos.slice(0, 2).forEach(t => { todoHtml += `<div class="text-[9px] px-1.5 py-0.5 bg-white/70 border border-slate-200/50 rounded text-slate-600 truncate max-w-[80px]">${t.text}</div>`; });
-                            if (pendingTodos.length > 2) todoHtml += `<div class="text-[9px] px-1.5 py-0.5 bg-orange-100 text-orange-600 border border-orange-200 rounded font-bold">+${pendingTodos.length - 2}</div>`;
+                            todoHtml = `<div class="mt-auto pt-2 border-t border-slate-100/50 flex gap-1 overflow-hidden">`;
+                            pendingTodos.slice(0, 2).forEach(t => { 
+                                todoHtml += `<div class="text-[9px] px-1.5 py-0.5 bg-white border border-rose-200 text-rose-600 rounded shadow-sm font-bold truncate max-w-[80px]">${t.text}</div>`; 
+                            });
+                            if (pendingTodos.length > 2) todoHtml += `<div class="text-[9px] px-1.5 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded font-bold">+${pendingTodos.length - 2}</div>`;
                             todoHtml += `</div>`;
                         }
+
                         const ownerTag = (ROLE === 'chief' && r.owner) ? `<div class="absolute top-0 right-0 bg-slate-800 text-white text-[9px] px-2 py-0.5 rounded-bl-lg z-10 font-bold opacity-80">${r.owner.substr(0,4)}</div>` : '';
-                        grid.innerHTML += `<div onclick="handleCardClick('${r.id}', ${i})" class="bed-card cursor-pointer group ${isSelected?'selected':''}" style="background: linear-gradient(to bottom, ${bg} 0%, #ffffff 60%)">${ownerTag}${isSelected?'<div class="absolute top-2 right-2 text-medical-600"><i class="fa-solid fa-circle-check text-lg"></i></div>':''}<div class="p-3 flex-1 flex flex-col relative"><div class="flex justify-between items-start mb-1"><span class="text-2xl font-bold text-slate-800">${i}</span><div class="flex gap-1 pt-1">${consultChips}</div></div><div class="mt-1"><h4 class="font-bold text-sm text-slate-700 leading-tight truncate">${r.name||'Unknown'}</h4><p class="text-[10px] font-mono text-slate-400 mt-0.5">HN: ${r.hn||'-'}</p></div>${todoHtml}</div></div>`;
+                        grid.innerHTML += `<div onclick="handleCardClick('${r.id}', ${i})" class="bed-card cursor-pointer group ${isSelected?'selected':''}" style="background: linear-gradient(to bottom, ${bg} 0%, #ffffff 60%)">${ownerTag}${isSelected?'<div class="absolute top-2 right-2 text-medical-600"><i class="fa-solid fa-circle-check text-lg"></i></div>':''}<div class="p-3 flex-1 flex flex-col relative"><div class="flex justify-between items-start mb-1"><span class="text-2xl font-bold text-slate-800">${i}</span><div class="flex gap-1 pt-1">${consultChips}</div></div><div class="mt-1 mb-2"><h4 class="font-bold text-sm text-slate-700 leading-tight truncate">${r.name||'Unknown'}</h4><p class="text-[10px] font-mono text-slate-400 mt-0.5">HN: ${r.hn||'-'}</p></div>${todoHtml}</div></div>`;
                     });
                 }
             }
         }
 
+        // 2. DISCHARGED VIEW
+        function renderDischarged() {
+            const list = document.getElementById('dischargedList'); list.innerHTML = "";
+            const archived = records.filter(r => r.is_discharged); // Show all archived regardless of ward
+            
+            if (archived.length === 0) { list.innerHTML = "<div class='col-span-full text-center p-10 text-slate-400 italic'>No archived records found.</div>"; return; }
+
+            archived.forEach(r => {
+                const date = new Date(r.updated_at).toLocaleDateString();
+                list.innerHTML += `
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+                    <div>
+                        <h4 class="font-bold text-slate-800">${r.name}</h4>
+                        <p class="text-xs text-slate-500">HN: ${r.hn} • Ward: ${r.ward}</p>
+                        <p class="text-[10px] text-slate-400 mt-1">Archived: ${date}</p>
+                    </div>
+                    <button onclick="restorePatient('${r.id}')" class="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-200 transition">
+                        Restore
+                    </button>
+                </div>`;
+            });
+        }
+
+        async function restorePatient(id) {
+            if(!confirm("Restore patient to active ward?")) return;
+            const idx = records.findIndex(r => r.id === id);
+            if(idx > -1) records[idx].is_discharged = false;
+            renderDischarged();
+            const r = records[idx];
+            // Save logic to update backend
+            const p = { id: r.id, is_discharged: false, ward: r.ward, bed_number: r.bed_number, hn: r.hn, name: r.name, details: r.details, consult_units: JSON.stringify(r.consult_units), color_id: r.color_id, todo_list: JSON.stringify(r.todo_list) };
+            await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'save', db: r.owner || DB_NAME, password: PASSWORD, requester: DB_NAME, ...p}) });
+        }
+
+        // WARD MANAGEMENT
+        function changeWard() {
+            toggleElement('wardModal', true);
+            document.getElementById('wardList').innerHTML = Array.from(wards).map(w => `
+                <div class="flex items-center gap-2 mb-2">
+                    <div onclick="selectWard('${w}')" class="flex-1 p-3 rounded-lg cursor-pointer font-bold transition flex justify-between ${w === currentWard ? 'bg-medical-50 text-medical-700 border border-medical-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}">
+                        ${w} ${w===currentWard ? '<i class="fa-solid fa-check"></i>':''}
+                    </div>
+                    ${w !== 'General Ward' ? `<button onclick="deleteWard('${w}')" class="w-10 h-10 rounded-lg bg-rose-50 text-rose-400 hover:bg-rose-100 hover:text-rose-600 flex items-center justify-center"><i class="fa-solid fa-trash"></i></button>` : ''}
+                </div>
+            `).join('');
+        }
+        
+        async function deleteWard(wardName) {
+            const pwd = prompt(`WARNING: Deleting ward "${wardName}" will erase ALL associated patient records.\nEnter your password to confirm:`);
+            if (!pwd) return;
+            
+            // Verify Password first
+            const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'auth_verify', db: DB_NAME, password: pwd}) });
+            const json = await res.json();
+            
+            if (json.status === 'success') {
+                // Collect IDs to delete
+                const toDelete = records.filter(r => r.ward === wardName).map(r => r.id);
+                // Optimistic UI
+                records = records.filter(r => r.ward !== wardName);
+                wards.delete(wardName);
+                if (currentWard === wardName) currentWard = "General Ward";
+                changeWard();
+                
+                // Backend Delete
+                if(toDelete.length > 0) {
+                    await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: DB_NAME, password: pwd, ids: toDelete}) });
+                }
+            } else {
+                alert("Incorrect Password");
+            }
+        }
+
+        // Standard Functions
         function toggleSelectMode() { isSelectMode = !isSelectMode; if(!isSelectMode) selectedIds.clear(); document.getElementById('selectionToolbar').classList.toggle('hidden', !isSelectMode); document.getElementById('btnSelectMode').classList.toggle('text-medical-600', isSelectMode); renderGrid(); }
         function handleCardClick(id, bedNum) { if (isSelectMode) { if(selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id); document.getElementById('selectCount').innerText = selectedIds.size; renderGrid(); } else { openEditor(id, bedNum); } }
         async function deleteBatch() { if(!confirm(`Delete ${selectedIds.size} items?`)) return; records = records.filter(r => !selectedIds.has(r.id)); renderGrid(); toggleSelectMode(); await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: DB_NAME, password: PASSWORD, ids: Array.from(selectedIds)}) }); }
@@ -354,45 +497,22 @@
             });
             toggleSelectMode();
         }
-
-        function renderMatrix() {
-            const container = document.getElementById('matrixContainer'); container.innerHTML = "";
-            const activeRecords = records.filter(r => r.ward === currentWard && !r.is_discharged);
-            const usedUnits = new Set(); activeRecords.forEach(r => r.consult_units.forEach(u => usedUnits.add(u.id)));
-            const sortedUnits = Array.from(usedUnits).sort();
-            if(sortedUnits.length === 0) { container.innerHTML = "<div class='p-10 text-slate-400 italic'>No active consultations.</div>"; return; }
-            sortedUnits.forEach(unit => {
-                const patients = activeRecords.filter(r => r.consult_units.some(u => u.id === unit));
-                let html = `<div class="matrix-col snap-center shrink-0"><h4 class="font-bold text-sm text-slate-700 uppercase mb-3 flex items-center gap-2"><i class="fa-solid fa-user-md text-medical-500"></i> ${unit} <span class="bg-slate-200 text-slate-600 px-1.5 rounded-md text-[10px]">${patients.length}</span></h4><div class="space-y-2">`;
-                patients.forEach(r => { html += `<div onclick="openEditor('${r.id}')" class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:border-medical-400 cursor-pointer transition"><div class="flex justify-between"><span class="font-bold text-sm text-slate-800">Bed ${r.bed_number}</span><span class="text-[10px] text-slate-400">${r.hn||''}</span></div><div class="text-xs text-slate-600 truncate">${r.name}</div></div>`; });
-                html += `</div></div>`; container.innerHTML += html;
-            });
-        }
+        function renderMatrix() { const container = document.getElementById('matrixContainer'); container.innerHTML = ""; const activeRecords = records.filter(r => r.ward === currentWard && !r.is_discharged); const usedUnits = new Set(); activeRecords.forEach(r => r.consult_units.forEach(u => usedUnits.add(u.id))); const sortedUnits = Array.from(usedUnits).sort(); if(sortedUnits.length === 0) { container.innerHTML = "<div class='p-10 text-slate-400 italic'>No active consultations.</div>"; return; } sortedUnits.forEach(unit => { const patients = activeRecords.filter(r => r.consult_units.some(u => u.id === unit)); let html = `<div class="matrix-col snap-center shrink-0"><h4 class="font-bold text-sm text-slate-700 uppercase mb-3 flex items-center gap-2"><i class="fa-solid fa-user-md text-medical-500"></i> ${unit} <span class="bg-slate-200 text-slate-600 px-1.5 rounded-md text-[10px]">${patients.length}</span></h4><div class="space-y-2">`; patients.forEach(r => { html += `<div onclick="openEditor('${r.id}')" class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:border-medical-400 cursor-pointer transition"><div class="flex justify-between"><span class="font-bold text-sm text-slate-800">Bed ${r.bed_number}</span><span class="text-[10px] text-slate-400">${r.hn||''}</span></div><div class="text-xs text-slate-600 truncate">${r.name}</div></div>`; }); html += `</div></div>`; container.innerHTML += html; }); }
 
         function openEditor(id, bedNum) {
             toggleElement('editorModal', true); editingId = id; currentTodos = []; activeConsults = []; currentDischarged = false; originalOwner = null;
             const sel = document.getElementById('editBed'); sel.innerHTML = ""; for(let i=1; i<=100; i++) sel.innerHTML += `<option value="${i}">${i}</option>`;
-            
-            if(ROLE === 'chief') {
-                const resSel = document.getElementById('residentSelect');
-                document.getElementById('residentSelectorDiv').classList.remove('hidden');
-                resSel.innerHTML = availableResidents.map(r => `<option value="${r}">${r}</option>`).join('');
-            }
-
+            if(ROLE === 'chief') { const resSel = document.getElementById('residentSelect'); document.getElementById('residentSelectorDiv').classList.remove('hidden'); resSel.innerHTML = availableResidents.map(r => `<option value="${r}">${r}</option>`).join(''); }
             if (id) {
                 const r = records.find(x => x.id === id); originalOwner = r.owner;
                 if(ROLE === 'chief') document.getElementById('residentSelect').value = originalOwner;
-                
                 document.getElementById('editorTitle').innerText = "Edit Patient"; document.getElementById('editBed').value = r.bed_number; document.getElementById('editorBedBadge').innerText = `#${r.bed_number}`;
-                document.getElementById('editHN').value = r.hn; document.getElementById('editName').value = r.name; 
-                setDetails(r.details);
+                document.getElementById('editHN').value = r.hn; document.getElementById('editName').value = r.name; setDetails(r.details);
                 activeConsults = r.consult_units ? JSON.parse(JSON.stringify(r.consult_units)) : []; currentTodos = r.todo_list ? JSON.parse(JSON.stringify(r.todo_list)) : [];
                 setActiveColor(r.color_id); toggleElement('btnDelete', true);
             } else {
                 document.getElementById('editorTitle').innerText = "Admit Patient"; document.getElementById('editBed').value = bedNum || 1; document.getElementById('editorBedBadge').innerText = `#${bedNum||1}`;
-                document.getElementById('editHN').value = ""; document.getElementById('editName').value = ""; 
-                setDetails("");
-                setActiveColor('#ffffff'); toggleElement('btnDelete', false);
+                document.getElementById('editHN').value = ""; document.getElementById('editName').value = ""; setDetails(""); setActiveColor('#ffffff'); toggleElement('btnDelete', false);
                 currentTodos = [{text: "", done: false}, {text: "", done: false}];
                 if(ROLE === 'chief') originalOwner = document.getElementById('residentSelect').value;
             }
@@ -400,122 +520,43 @@
         }
         function closeEditor() { toggleElement('editorModal', false); editingId = null; }
         function changeBedInEditor() { document.getElementById('editorBedBadge').innerText='#'+document.getElementById('editBed').value; saveRecord(true); }
-
-        // SYNC MULTIPLE TEXTAREAS (Desktop/Mobile/Fullscreen)
-        function setDetails(text) {
-            document.getElementById('editDetailsDesktop').value = text || "";
-            document.getElementById('editDetailsMobile').value = text || "";
-            document.getElementById('fullscreenEditor').value = text || "";
-        }
-        function syncDetails(el) {
-            const val = el.value;
-            if(el.id !== 'editDetailsDesktop') document.getElementById('editDetailsDesktop').value = val;
-            if(el.id !== 'editDetailsMobile') document.getElementById('editDetailsMobile').value = val;
-            if(el.id !== 'fullscreenEditor') document.getElementById('fullscreenEditor').value = val;
-        }
-
-        function renderConsults() {
-            const div = document.getElementById('consultContainer'); div.innerHTML = "";
-            const allUnits = [...STANDARD_UNITS]; activeConsults.forEach(ac => { if (!allUnits.find(u => u.id === ac.id)) allUnits.push(ac); });
-            allUnits.forEach(u => { const isActive = activeConsults.find(ac => ac.id === u.id); div.innerHTML += `<div onclick="toggleConsult('${u.id}', '${u.icon}')" class="consult-chip cursor-pointer select-none ${isActive?'active':'inactive'}"><i class="fa-solid ${u.icon}"></i> ${u.id}</div>`; });
-        }
+        function setDetails(text) { document.getElementById('editDetailsDesktop').value = text || ""; document.getElementById('editDetailsMobile').value = text || ""; document.getElementById('fullscreenEditor').value = text || ""; }
+        function syncDetails(el) { const val = el.value; if(el.id !== 'editDetailsDesktop') document.getElementById('editDetailsDesktop').value = val; if(el.id !== 'editDetailsMobile') document.getElementById('editDetailsMobile').value = val; if(el.id !== 'fullscreenEditor') document.getElementById('fullscreenEditor').value = val; }
+        function renderConsults() { const div = document.getElementById('consultContainer'); div.innerHTML = ""; const allUnits = [...STANDARD_UNITS]; activeConsults.forEach(ac => { if (!allUnits.find(u => u.id === ac.id)) allUnits.push(ac); }); allUnits.forEach(u => { const isActive = activeConsults.find(ac => ac.id === u.id); div.innerHTML += `<div onclick="toggleConsult('${u.id}', '${u.icon}')" class="consult-chip cursor-pointer select-none ${isActive?'active':'inactive'}"><i class="fa-solid ${u.icon}"></i> ${u.id}</div>`; }); }
         function toggleConsult(id, icon) { const idx = activeConsults.findIndex(c => c.id === id); if(idx > -1) activeConsults.splice(idx, 1); else activeConsults.push({id, icon}); renderConsults(); }
         function addCustomConsult() { const val = document.getElementById('customConsult').value.trim(); if(val) { activeConsults.push({id: val, icon: 'fa-user-md'}); document.getElementById('customConsult').value = ""; renderConsults(); } }
-
-        function renderTodos() {
-            const div = document.getElementById('todoContainer'); div.innerHTML = "";
-            currentTodos.forEach((t, i) => { div.innerHTML += `<div class="flex items-center gap-2 p-2 bg-white rounded border ${t.done ? 'border-green-200 bg-green-50' : 'border-slate-200'}"><input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo(${i})" class="accent-green-500"><input type="text" value="${t.text}" placeholder="Add task..." list="taskSuggestions" onblur="currentTodos[${i}].text=this.value" id="todoInput-${i}" class="flex-1 bg-transparent outline-none text-xs ${t.done ? 'line-through text-green-600' : 'text-slate-700'}"><i class="fa-solid fa-xmark text-slate-300 cursor-pointer" onclick="removeTodo(${i})"></i></div>`; });
-        }
+        function renderTodos() { const div = document.getElementById('todoContainer'); div.innerHTML = ""; currentTodos.forEach((t, i) => { div.innerHTML += `<div class="flex items-center gap-2 p-2 bg-white rounded border ${t.done ? 'border-green-200 bg-green-50' : 'border-slate-200'}"><input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo(${i})" class="accent-green-500"><input type="text" value="${t.text}" placeholder="Add task..." list="taskSuggestions" onblur="currentTodos[${i}].text=this.value" id="todoInput-${i}" class="flex-1 bg-transparent outline-none text-xs ${t.done ? 'line-through text-green-600' : 'text-slate-700'}"><i class="fa-solid fa-xmark text-slate-300 cursor-pointer" onclick="removeTodo(${i})"></i></div>`; }); }
         function addTodo() { currentTodos.push({text:"", done:false}); renderTodos(); setTimeout(() => { document.getElementById(`todoInput-${currentTodos.length-1}`).focus(); }, 50); }
         function removeTodo(i) { currentTodos.splice(i,1); renderTodos(); }
         function toggleTodo(i) { currentTodos[i].done = !currentTodos[i].done; renderTodos(); }
-
         function renderColorPicker() { document.getElementById('colorContainer').innerHTML = COLORS.map(c => `<div class="color-dot bg-[${c}] shadow-sm" style="background-color: ${c}" onclick="setActiveColor('${c}')" data-col="${c}"></div>`).join(''); }
         function setActiveColor(c) { document.querySelectorAll('.color-dot').forEach(el => el.classList.toggle('selected', el.dataset.col === c)); document.getElementById('colorContainer').dataset.selected = c; }
-
-        function changeWard() { toggleElement('wardModal', true); document.getElementById('wardList').innerHTML = Array.from(wards).map(w => `<div onclick="selectWard('${w}')" class="p-3 mb-2 rounded-lg cursor-pointer font-bold transition flex justify-between ${w === currentWard ? 'bg-medical-50 text-medical-700 border border-medical-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}">${w} ${w===currentWard ? '<i class="fa-solid fa-check"></i>':''}</div>`).join(''); }
-        function createNewWard() { const n = document.getElementById('newWardName').value.trim(); if(n) selectWard(n); }
+        function createNewWard() { const n = document.getElementById('newWardName').value.trim(); if(n) { currentWard = n; wards.add(n); changeWard(); renderView(); }}
         function selectWard(n) { currentWard = n; toggleElement('wardModal', false); renderView(); }
-
+        
         async function saveRecord(silent = false) {
             const btn = document.getElementById('btnSave'); if(!silent) btn.innerText = "Saving...";
-            const targetBed = document.getElementById('editBed').value;
-            const targetName = document.getElementById('editName').value.trim();
+            const targetBed = document.getElementById('editBed').value; const targetName = document.getElementById('editName').value.trim();
             const conflict = records.find(r => r.id !== editingId && r.ward === currentWard && !r.is_discharged && (r.bed_number == targetBed || (targetName && r.name === targetName)));
             if (conflict && !silent) { if(!confirm(`CONFLICT DETECTED!\nBed ${conflict.bed_number} occupied by ${conflict.name}.\nOverwrite?`)) { btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`; return; } }
-
             let name = targetName; if(!name) { const count = records.length + 1; name = `Patient_${String(count).padStart(3, '0')}`; }
             const validTodos = currentTodos.filter(t => t.text.trim() !== "");
             const detailsVal = document.getElementById('editDetailsDesktop').value;
-
-            const p = {
-                id: editingId || 'rec_' + Date.now(),
-                bed_number: targetBed,
-                hn: document.getElementById('editHN').value,
-                name: name,
-                ward: currentWard,
-                details: detailsVal,
-                consult_units: JSON.stringify(activeConsults),
-                color_id: document.getElementById('colorContainer').dataset.selected || '#ffffff',
-                todo_list: JSON.stringify(validTodos),
-                is_discharged: currentDischarged
-            };
-
+            const p = { id: editingId || 'rec_' + Date.now(), bed_number: targetBed, hn: document.getElementById('editHN').value, name: name, ward: currentWard, details: detailsVal, consult_units: JSON.stringify(activeConsults), color_id: document.getElementById('colorContainer').dataset.selected || '#ffffff', todo_list: JSON.stringify(validTodos), is_discharged: currentDischarged };
             let targetDB = DB_NAME;
-            if (ROLE === 'chief') {
-                targetDB = document.getElementById('residentSelect').value;
-                if(!targetDB) { alert("Please select a resident to assign."); return; }
-                if(originalOwner && originalOwner !== targetDB) {
-                    await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: originalOwner, password: PASSWORD, requester: DB_NAME, id: p.id}) });
-                }
-            }
-
+            if (ROLE === 'chief') { targetDB = document.getElementById('residentSelect').value; if(!targetDB) { alert("Please select a resident."); return; } if(originalOwner && originalOwner !== targetDB) { await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: originalOwner, password: PASSWORD, requester: DB_NAME, id: p.id}) }); } }
             const payload = { action: 'save', db: targetDB, requester: DB_NAME, password: PASSWORD, ...p };
-
-            if (ROLE !== 'chief') {
-                const clean = {...p, consult_units: activeConsults, todo_list: validTodos};
-                const idx = records.findIndex(r => r.id === p.id);
-                if(idx > -1) records[idx] = clean; else records.push(clean);
-                if(!silent) renderView();
-            }
-            
-            // NOTE: Do not close editor on save in fullscreen to allow continuous work
-            if(!silent && !document.getElementById('fullscreenOverlay').classList.contains('hidden')) {
-               // Stay open
-            } else if (!silent) {
-               closeEditor();
-            }
-            
+            if (ROLE !== 'chief') { const clean = {...p, consult_units: activeConsults, todo_list: validTodos}; const idx = records.findIndex(r => r.id === p.id); if(idx > -1) records[idx] = clean; else records.push(clean); if(!silent) renderView(); }
+            if(!silent && !document.getElementById('fullscreenOverlay').classList.contains('hidden')) {} else if (!silent) { closeEditor(); }
             await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
             if(ROLE === 'chief') fetchData(true);
             if(!silent) btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`;
         }
-
-        async function deleteRecord() {
-            if(!confirm("Permanently delete?")) return;
-            records = records.filter(r => r.id !== editingId);
-            const targetDB = (ROLE === 'chief' && originalOwner) ? originalOwner : DB_NAME;
-            renderView(); closeEditor();
-            await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: targetDB, requester: DB_NAME, password: PASSWORD, id: editingId}) });
-        }
-
+        async function deleteRecord() { if(!confirm("Permanently delete?")) return; records = records.filter(r => r.id !== editingId); const targetDB = (ROLE === 'chief' && originalOwner) ? originalOwner : DB_NAME; renderView(); closeEditor(); await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: targetDB, requester: DB_NAME, password: PASSWORD, id: editingId}) }); }
         function manualRefresh() { fetchData(); }
         function toggleElement(id, show) { const el = document.getElementById(id); if(show) el.classList.remove('hidden'); else el.classList.add('hidden'); }
         function toggleDischarge() { currentDischarged = !currentDischarged; const btn = document.getElementById('btnDischarge'); btn.innerText = currentDischarged ? "Discharged" : "Archive"; btn.className = currentDischarged ? "px-4 py-2 bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition" : "px-4 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold transition hover:bg-slate-200"; }
-        
-        function toggleFullScreen() { 
-            const fsEl = document.getElementById('fullscreenOverlay');
-            // Toggle visibility
-            fsEl.classList.toggle('hidden');
-            
-            if(!fsEl.classList.contains('hidden')) {
-                // Entering fullscreen: focus and set cursor
-                const editor = document.getElementById('fullscreenEditor');
-                editor.focus();
-            }
-        }
-        
-        // Sync logic is already handled by the oninput event listeners attached in HTML
+        function toggleFullScreen() { const fsEl = document.getElementById('fullscreenOverlay'); fsEl.classList.toggle('hidden'); if(!fsEl.classList.contains('hidden')) { const editor = document.getElementById('fullscreenEditor'); editor.focus(); } }
         document.getElementById('fullscreenEditor').addEventListener('input', function() { syncDetails(this); });
     </script>
 </body>
