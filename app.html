@@ -321,7 +321,7 @@
                             todoHtml += `</div>`;
                         }
                         const ownerTag = (ROLE === 'chief' && r.owner) ? `<div class="absolute top-0 right-0 bg-slate-800 text-white text-[9px] px-2 py-0.5 rounded-bl-lg z-10 font-bold opacity-80">${r.owner.substr(0,4)}</div>` : '';
-                        grid.innerHTML += `<div onclick="handleCardClick('${r.id}', ${i})" class="bed-card cursor-pointer group ${isSelected?'selected':''}" style="background: linear-gradient(to bottom, ${bg} 0%, #ffffff 60%)">${ownerTag}${isSelected?'<div class="absolute top-2 right-2 text-medical-600"><i class="fa-solid fa-circle-check text-lg"></i></div>':''}<div class="p-3 flex-1 flex flex-col relative"><div class="flex justify-between items-start mb-1"><span class="text-2xl font-bold text-slate-800">${i}</span><div class="flex gap-1 pt-1">${consultChips}</div></div><div class="mt-1 mb-2"><h4 class="font-bold text-sm text-slate-700 leading-tight truncate">${r.name||'Unknown'}</h4><p class="text-[10px] font-mono text-slate-400 mt-0.5">HN: ${r.hn||'-'}</p></div>${todoHtml}</div></div>`;
+                        grid.innerHTML += `<div onclick="handleItemClick('${r.id}', ${i})" class="bed-card cursor-pointer group ${isSelected?'selected':''}" style="background: linear-gradient(to bottom, ${bg} 0%, #ffffff 60%)">${ownerTag}${isSelected?'<div class="absolute top-2 right-2 text-medical-600"><i class="fa-solid fa-circle-check text-lg"></i></div>':''}<div class="p-3 flex-1 flex flex-col relative"><div class="flex justify-between items-start mb-1"><span class="text-2xl font-bold text-slate-800">${i}</span><div class="flex gap-1 pt-1">${consultChips}</div></div><div class="mt-1 mb-2"><h4 class="font-bold text-sm text-slate-700 leading-tight truncate">${r.name||'Unknown'}</h4><p class="text-[10px] font-mono text-slate-400 mt-0.5">HN: ${r.hn||'-'}</p></div>${todoHtml}</div></div>`;
                     });
                 }
             }
@@ -333,9 +333,53 @@
             openEditor(null, i);
         }
 
-        function toggleSelectMode() { isSelectMode = !isSelectMode; if(!isSelectMode) selectedIds.clear(); document.getElementById('selectionToolbar').classList.toggle('hidden', !isSelectMode); document.getElementById('btnSelectMode').classList.toggle('text-medical-600', isSelectMode); renderGrid(); }
-        function handleCardClick(id, bedNum) { if (isSelectMode) { if(selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id); document.getElementById('selectCount').innerText = selectedIds.size; renderGrid(); } else { openEditor(id, bedNum); } }
-        async function deleteBatch() { if(!confirm(`Delete ${selectedIds.size} items?`)) return; records = records.filter(r => !selectedIds.has(r.id)); renderGrid(); toggleSelectMode(); await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: DB_NAME, password: PASSWORD, ids: Array.from(selectedIds)}) }); }
+        function toggleSelectMode() { 
+            isSelectMode = !isSelectMode; 
+            if(!isSelectMode) selectedIds.clear(); 
+            document.getElementById('selectionToolbar').classList.toggle('hidden', !isSelectMode); 
+            document.getElementById('btnSelectMode').classList.toggle('text-medical-600', isSelectMode); 
+            
+            // FIX: Refresh the ENTIRE view so Matrix/Discharged lists also update visually
+            renderView(); 
+        }
+
+        // FIX: Global Item Click Handler
+        function handleItemClick(id, bedNum) { 
+            if (isSelectMode) { 
+                if(selectedIds.has(id)) selectedIds.delete(id); 
+                else selectedIds.add(id); 
+                document.getElementById('selectCount').innerText = selectedIds.size; 
+                renderView(); // Re-render to show selection state in all views
+            } else { 
+                openEditor(id, bedNum); 
+            } 
+        }
+
+        async function deleteBatch() { 
+            if(!confirm(`Delete ${selectedIds.size} items?`)) return;
+            
+            // FIX: Stop automation to prevent stale data fetch during deletion
+            clearInterval(refreshTimer);
+            clearInterval(autoSaveTimer);
+
+            // Optimistic UI update
+            records = records.filter(r => !selectedIds.has(r.id)); 
+            renderView(); // Updates whatever view is active (Grid/Matrix)
+            
+            // Send to backend
+            const ids = Array.from(selectedIds);
+            toggleSelectMode(); // Exit select mode
+            
+            try {
+                await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: DB_NAME, password: PASSWORD, ids: ids}) });
+            } catch(e) {
+                alert("Batch delete failed. Data may reappear on refresh.");
+            } finally {
+                // Restart automation (will fetch fresh data)
+                startAutomation();
+            }
+        }
+
         function exportBatch() {
             const items = records.filter(r => selectedIds.has(r.id));
             items.forEach(r => {
@@ -346,7 +390,35 @@
             });
             toggleSelectMode();
         }
-        function renderMatrix() { const container = document.getElementById('matrixContainer'); container.innerHTML = ""; const activeRecords = records.filter(r => r.ward === currentWard && !r.is_discharged); const usedUnits = new Set(); activeRecords.forEach(r => r.consult_units.forEach(u => usedUnits.add(u.id))); const sortedUnits = Array.from(usedUnits).sort(); if(sortedUnits.length === 0) { container.innerHTML = "<div class='p-10 text-slate-400 italic'>No active consultations.</div>"; return; } sortedUnits.forEach(unit => { const patients = activeRecords.filter(r => r.consult_units.some(u => u.id === unit)); let html = `<div class="matrix-col snap-center shrink-0"><h4 class="font-bold text-sm text-slate-700 uppercase mb-3 flex items-center gap-2"><i class="fa-solid fa-user-md text-medical-500"></i> ${unit} <span class="bg-slate-200 text-slate-600 px-1.5 rounded-md text-[10px]">${patients.length}</span></h4><div class="space-y-2">`; patients.forEach(r => { html += `<div onclick="openEditor('${r.id}')" class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:border-medical-400 cursor-pointer transition"><div class="flex justify-between"><span class="font-bold text-sm text-slate-800">Bed ${r.bed_number}</span><span class="text-[10px] text-slate-400">${r.hn||''}</span></div><div class="text-xs text-slate-600 truncate">${r.name}</div></div>`; }); html += `</div></div>`; container.innerHTML += html; }); }
+
+        function renderMatrix() { 
+            const container = document.getElementById('matrixContainer'); 
+            container.innerHTML = ""; 
+            const activeRecords = records.filter(r => r.ward === currentWard && !r.is_discharged); 
+            const usedUnits = new Set(); 
+            activeRecords.forEach(r => r.consult_units.forEach(u => usedUnits.add(u.id))); 
+            const sortedUnits = Array.from(usedUnits).sort(); 
+            
+            if(sortedUnits.length === 0) { 
+                container.innerHTML = "<div class='p-10 text-slate-400 italic'>No active consultations.</div>"; 
+                return; 
+            } 
+            
+            sortedUnits.forEach(unit => { 
+                const patients = activeRecords.filter(r => r.consult_units.some(u => u.id === unit)); 
+                let html = `<div class="matrix-col snap-center shrink-0"><h4 class="font-bold text-sm text-slate-700 uppercase mb-3 flex items-center gap-2"><i class="fa-solid fa-user-md text-medical-500"></i> ${unit} <span class="bg-slate-200 text-slate-600 px-1.5 rounded-md text-[10px]">${patients.length}</span></h4><div class="space-y-2">`; 
+                patients.forEach(r => { 
+                    // FIX: Visual selection indicator
+                    const isSelected = selectedIds.has(r.id);
+                    const selClass = isSelected ? 'ring-2 ring-medical-500 border-medical-500 bg-medical-50' : 'border-slate-200 hover:border-medical-400';
+                    
+                    // FIX: Use handleItemClick instead of openEditor
+                    html += `<div onclick="handleItemClick('${r.id}', ${r.bed_number})" class="bg-white p-3 rounded-lg border shadow-sm cursor-pointer transition ${selClass}"><div class="flex justify-between"><span class="font-bold text-sm text-slate-800">Bed ${r.bed_number}</span><span class="text-[10px] text-slate-400">${r.hn||''}</span></div><div class="text-xs text-slate-600 truncate">${r.name}</div></div>`; 
+                }); 
+                html += `</div></div>`; 
+                container.innerHTML += html; 
+            }); 
+        }
 
         function openEditor(id, bedNum) {
             toggleElement('editorModal', true); editingId = id; currentTodos = []; activeConsults = []; currentDischarged = false; originalOwner = null;
@@ -535,8 +607,14 @@
             if (archived.length === 0) { list.innerHTML = "<div class='col-span-full text-center p-10 text-slate-400 italic'>No archived records found.</div>"; return; }
             archived.forEach(r => {
                 const dateStr = r.updated_at ? new Date(r.updated_at).toLocaleDateString() : 'N/A';
+                
+                // FIX: Visual selection indicator
+                const isSelected = selectedIds.has(r.id);
+                const selClass = isSelected ? 'ring-2 ring-medical-500 border-medical-500 bg-medical-50' : 'border-slate-200 hover:bg-slate-50';
+
+                // FIX: Use handleItemClick instead of openEditor
                 list.innerHTML += `
-                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center cursor-pointer hover:bg-slate-50 transition" onclick="openEditor('${r.id}')">
+                <div class="bg-white p-4 rounded-xl border shadow-sm flex justify-between items-center cursor-pointer transition ${selClass}" onclick="handleItemClick('${r.id}', null)">
                     <div>
                         <h4 class="font-bold text-slate-800">${r.name}</h4>
                         <p class="text-xs text-slate-500">HN: ${r.hn} • Ward: ${r.ward}</p>
