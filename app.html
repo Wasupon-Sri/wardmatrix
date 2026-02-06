@@ -232,6 +232,10 @@
         async function setupPassword() { const p = document.getElementById('setupPin').value; if(!p) return; await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'auth_set_password', db: DB_NAME, password: p}) }); location.reload(); }
 
         function startAutomation() {
+            // FIX: Clear existing timers before starting new ones to prevent stacking
+            if (refreshTimer) clearInterval(refreshTimer);
+            if (autoSaveTimer) clearInterval(autoSaveTimer);
+
             refreshTimer = setInterval(() => { if(document.getElementById('editorModal').classList.contains('hidden')) fetchData(true); }, 5000);
             autoSaveTimer = setInterval(() => { if(!document.getElementById('editorModal').classList.contains('hidden')) saveRecord(true); }, 30000);
         }
@@ -336,13 +340,26 @@
             toggleElement('editorModal', true); editingId = id; currentTodos = []; activeConsults = []; currentDischarged = false; originalOwner = null;
             const sel = document.getElementById('editBed'); sel.innerHTML = ""; for(let i=1; i<=100; i++) sel.innerHTML += `<option value="${i}">${i}</option>`;
             if(ROLE === 'chief') { const resSel = document.getElementById('residentSelect'); document.getElementById('residentSelectorDiv').classList.remove('hidden'); resSel.innerHTML = availableResidents.map(r => `<option value="${r}">${r}</option>`).join(''); }
+            
             if (id) {
                 const r = records.find(x => x.id === id); originalOwner = r.owner;
                 if(ROLE === 'chief') document.getElementById('residentSelect').value = originalOwner;
-                document.getElementById('editorTitle').innerText = "Edit Patient"; document.getElementById('editBed').value = r.bed_number; document.getElementById('editorBedBadge').innerText = `#${r.bed_number}`;
-                document.getElementById('editHN').value = r.hn; document.getElementById('editName').value = r.name; setDetails(r.details);
-                activeConsults = r.consult_units ? JSON.parse(JSON.stringify(r.consult_units)) : []; currentTodos = r.todo_list ? JSON.parse(JSON.stringify(r.todo_list)) : [];
-                setActiveColor(r.color_id); toggleElement('btnDelete', true);
+                document.getElementById('editorTitle').innerText = "Edit Patient"; 
+                document.getElementById('editBed').value = r.bed_number; 
+                document.getElementById('editorBedBadge').innerText = `#${r.bed_number}`;
+                document.getElementById('editHN').value = r.hn; 
+                document.getElementById('editName').value = r.name; 
+                setDetails(r.details);
+                activeConsults = r.consult_units ? JSON.parse(JSON.stringify(r.consult_units)) : []; 
+                currentTodos = r.todo_list ? JSON.parse(JSON.stringify(r.todo_list)) : [];
+                
+                // --- FIX: Load discharge status ---
+                // Specifically check if the record is discharged to update the button state
+                currentDischarged = !!r.is_discharged; 
+                // ----------------------------------
+
+                setActiveColor(r.color_id); 
+                toggleElement('btnDelete', true);
             } else {
                 document.getElementById('editorTitle').innerText = "Admit Patient"; document.getElementById('editBed').value = bedNum || 1; document.getElementById('editorBedBadge').innerText = `#${bedNum||1}`;
                 document.getElementById('editHN').value = ""; document.getElementById('editName').value = ""; setDetails(""); setActiveColor('#ffffff'); toggleElement('btnDelete', false);
@@ -380,29 +397,55 @@
         function createNewWard() { const n = document.getElementById('newWardName').value.trim(); if(n) { currentWard = n; wards.add(n); changeWard(); renderView(); }}
         function selectWard(n) { currentWard = n; toggleElement('wardModal', false); renderView(); }
         
-        // TOAST SAVE LOGIC
         async function saveRecord(silent = false) {
             const btn = document.getElementById('btnSave'); if(!silent) btn.innerText = "Saving...";
             const toast = document.getElementById('saveToast');
             const toastMsg = document.getElementById('saveToastMsg');
             
+            // --- FIX START: EMPTY RECORD CHECK ---
+            const targetBed = document.getElementById('editBed').value; 
+            const targetName = document.getElementById('editName').value.trim();
+            const targetHN = document.getElementById('editHN').value.trim();
+            const detailsVal = document.getElementById('editDetailsDesktop').value.trim();
+            const validTodos = currentTodos.filter(t => t.text.trim() !== "");
+            
+            // If it is an AUTO-SAVE (silent) and the main fields are EMPTY, do not save.
+            // This prevents creating "Phantom" admissions when a user just clicks a bed and waits.
+            if (silent && !editingId && !targetName && !targetHN && !detailsVal && activeConsults.length === 0 && validTodos.length === 0) {
+                console.log("Skipping auto-save: Empty new record.");
+                return;
+            }
+            // --- FIX END ---
+
             if(!silent) {
                 clearTimeout(toastTimer);
                 toast.className = "fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[10001] px-6 py-3 rounded-full text-white font-bold shadow-2xl transition-all duration-300 flex items-center gap-3 bg-slate-900 translate-y-0 opacity-100";
                 toastMsg.innerText = "Saving...";
             }
-            const targetBed = document.getElementById('editBed').value; const targetName = document.getElementById('editName').value.trim();
+
             const conflict = records.find(r => r.id !== editingId && r.ward === currentWard && !r.is_discharged && (r.bed_number == targetBed || (targetName && r.name === targetName)));
             if (conflict && !silent) { if(!confirm(`CONFLICT DETECTED!\nBed ${conflict.bed_number} occupied by ${conflict.name}.\nOverwrite?`)) { btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`; toast.classList.add('translate-y-10', 'opacity-0'); return; } }
-            let name = targetName; if(!name) { const count = records.length + 1; name = `Patient_${String(count).padStart(3, '0')}`; }
-            const validTodos = currentTodos.filter(t => t.text.trim() !== "");
-            const detailsVal = document.getElementById('editDetailsDesktop').value;
-            const p = { id: editingId || 'rec_' + Date.now(), bed_number: targetBed, hn: document.getElementById('editHN').value, name: name, ward: currentWard, details: detailsVal, consult_units: JSON.stringify(activeConsults), color_id: document.getElementById('colorContainer').dataset.selected || '#ffffff', todo_list: JSON.stringify(validTodos), is_discharged: currentDischarged };
+            
+            let name = targetName; 
+            if(!name) { const count = records.length + 1; name = `Patient_${String(count).padStart(3, '0')}`; }
+            
+            const p = { id: editingId || 'rec_' + Date.now(), bed_number: targetBed, hn: targetHN, name: name, ward: currentWard, details: detailsVal, consult_units: JSON.stringify(activeConsults), color_id: document.getElementById('colorContainer').dataset.selected || '#ffffff', todo_list: JSON.stringify(validTodos), is_discharged: currentDischarged };
             let targetDB = DB_NAME;
             if (ROLE === 'chief') { targetDB = document.getElementById('residentSelect').value; if(!targetDB) { alert("Please select a resident."); return; } if(originalOwner && originalOwner !== targetDB) { await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: originalOwner, password: PASSWORD, requester: DB_NAME, id: p.id}) }); } }
             const payload = { action: 'save', db: targetDB, requester: DB_NAME, password: PASSWORD, ...p };
-            if (ROLE !== 'chief') { const clean = {...p, consult_units: activeConsults, todo_list: validTodos}; const idx = records.findIndex(r => r.id === p.id); if(idx > -1) records[idx] = clean; else records.push(clean); if(!silent) renderView(); }
+            
+            // Update Local State immediately
+            if (ROLE !== 'chief') { 
+                const clean = {...p, consult_units: activeConsults, todo_list: validTodos}; 
+                const idx = records.findIndex(r => r.id === p.id); 
+                if(idx > -1) records[idx] = clean; else records.push(clean); 
+                if(!silent) renderView(); 
+                // Update editingId so subsequent auto-saves know it's an existing record
+                editingId = p.id; 
+            }
+
             if(!silent && !document.getElementById('fullscreenOverlay').classList.contains('hidden')) {} else if (!silent) { closeEditor(); }
+            
             await fetch(API_URL, { method: 'POST', headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify(payload) });
             if(ROLE === 'chief') fetchData(true);
             
@@ -414,10 +457,31 @@
             }
         }
         
-        async function deleteRecord() { if(!confirm("Permanently delete?")) return; records = records.filter(r => r.id !== editingId); const targetDB = (ROLE === 'chief' && originalOwner) ? originalOwner : DB_NAME; renderView(); closeEditor(); await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: targetDB, requester: DB_NAME, password: PASSWORD, id: editingId}) }); }
+        async function deleteRecord() { 
+            if(!confirm("Permanently delete?")) return; 
+            
+            // --- FIX START: STOP AUTO-SAVE ---
+            // Stop the auto-save timer immediately to prevent race conditions
+            clearInterval(autoSaveTimer);
+            // --- FIX END ---
+
+            records = records.filter(r => r.id !== editingId); 
+            const targetDB = (ROLE === 'chief' && originalOwner) ? originalOwner : DB_NAME; 
+            const idToDelete = editingId;
+            
+            renderView(); 
+            closeEditor(); 
+            
+            await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: targetDB, requester: DB_NAME, password: PASSWORD, id: idToDelete}) });
+            
+            // Restart automation
+            startAutomation();
+        }
+
         function manualRefresh() { fetchData(); }
         function toggleElement(id, show) { const el = document.getElementById(id); if(show) el.classList.remove('hidden'); else el.classList.add('hidden'); }
-        function toggleDischarge() { currentDischarged = !currentDischarged; const btn = document.getElementById('btnDischarge'); btn.innerText = currentDischarged ? "Discharged" : "Archive"; btn.className = currentDischarged ? "px-4 py-2 bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition" : "px-4 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold transition hover:bg-slate-200"; }
+        function updateDischargeBtn() { const btn = document.getElementById('btnDischarge'); btn.innerText = currentDischarged ? "Discharged" : "Archive"; btn.className = currentDischarged ? "px-4 py-2 bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition" : "px-4 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold transition hover:bg-slate-200"; }
+        function toggleDischarge() { currentDischarged = !currentDischarged; updateDischargeBtn(); }
         function toggleFullScreen() { const fsEl = document.getElementById('fullscreenOverlay'); fsEl.classList.toggle('hidden'); if(!fsEl.classList.contains('hidden')) { const editor = document.getElementById('fullscreenEditor'); editor.focus(); } }
         
         function renderDischarged() {
