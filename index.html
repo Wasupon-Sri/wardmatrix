@@ -3,69 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ResidencyWardMx Portal</title>
+    <title>Ward Manager Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: { sans: ['Sarabun', 'sans-serif'] },
-                    colors: { medical: { 500: '#0ea5e9', 600: '#0284c7', 900: '#0c4a6e' } }
+                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'], mono: ['Inter', 'monospace'] },
+                    colors: {
+                        brand: { 500: '#3b82f6', 600: '#2563eb', 900: '#0f172a' },
+                        surface: { 800: '#1e293b', 900: '#0f172a' }
+                    }
                 }
             }
         }
     </script>
+    <style>
+        body { background: radial-gradient(circle at top right, #1e293b, #0f172a); color: white; min-height: 100vh; }
+        .glass-panel { background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+        .role-btn.active { background: #3b82f6; color: white; border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+        .user-card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5); border-color: #3b82f6; }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
 </head>
-<body class="bg-slate-900 text-white min-h-screen font-sans">
+<body class="flex flex-col antialiased">
 
-    <div class="container mx-auto p-6 max-w-4xl">
+    <div class="container mx-auto p-6 max-w-5xl flex-1 flex flex-col">
         <!-- Header -->
-        <header class="flex justify-between items-center mb-10">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-medical-500 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-medical-500/20">
-                    <i class="fa-solid fa-hospital-user"></i>
+        <header class="flex flex-col md:flex-row justify-between items-center mb-12 pt-6">
+            <div class="flex items-center gap-4 mb-6 md:mb-0">
+                <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-blue-500/20">
+                    <i class="fa-solid fa-staff-snake"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold">ResidencyWardMx</h1>
-                    <p class="text-slate-400 text-sm">Residency Ward Manager v2.0</p>
+                    <h1 class="text-3xl font-bold tracking-tight">Ward Manager</h1>
+                    <p class="text-slate-400 text-sm font-medium tracking-wide">Internal Medicine • Rajavithi</p>
                 </div>
             </div>
-            <button onclick="toggleCreate()" class="w-10 h-10 bg-slate-800 rounded-lg hover:bg-slate-700 transition flex items-center justify-center">
-                <i class="fa-solid fa-plus"></i>
-            </button>
+            
+            <!-- Role Toggle -->
+            <div class="glass-panel p-1.5 rounded-xl flex gap-1">
+                <button onclick="setRole('resident')" id="roleResident" class="role-btn active px-6 py-2.5 rounded-lg text-sm font-bold text-slate-400 transition-all duration-300 flex items-center gap-2">
+                    <i class="fa-solid fa-user-doctor"></i> Ward Resident
+                </button>
+                <button onclick="setRole('chief')" id="roleChief" class="role-btn px-6 py-2.5 rounded-lg text-sm font-bold text-slate-400 transition-all duration-300 flex items-center gap-2">
+                    <i class="fa-solid fa-user-tie"></i> Ward Chief
+                </button>
+            </div>
         </header>
 
-        <!-- New DB Form -->
-        <div id="createPanel" class="hidden bg-slate-800 p-6 rounded-2xl mb-8 border border-slate-700 animate-fade-in">
-            <h3 class="font-bold text-lg mb-4 text-medical-500">Create New User Database</h3>
-            <div class="flex gap-2">
-                <input type="text" id="newDbName" placeholder="e.g. Resident_Smith" class="flex-1 bg-slate-900 border border-slate-600 rounded-lg p-3 outline-none focus:border-medical-500">
-                <input type="password" id="adminKey" placeholder="Admin Key" class="w-32 bg-slate-900 border border-slate-600 rounded-lg p-3 outline-none text-center">
-                <button onclick="createDB()" class="bg-medical-600 hover:bg-medical-500 px-6 rounded-lg font-bold">Create</button>
+        <!-- Action Bar -->
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-slate-200" id="gridTitle">Select Database</h2>
+            <button onclick="toggleCreate()" class="glass-panel hover:bg-white/5 px-4 py-3 rounded-xl transition text-sm font-bold flex items-center gap-2 border border-white/10">
+                <i class="fa-solid fa-plus text-blue-400"></i> New User
+            </button>
+        </div>
+
+        <!-- New User Form -->
+        <div id="createPanel" class="hidden glass-panel p-6 rounded-2xl mb-8 animate-fade-in border-l-4 border-blue-500">
+            <h3 class="font-bold text-lg mb-4 text-white">Initialize New Ward Database</h3>
+            <div class="flex flex-col md:flex-row gap-3">
+                <input type="text" id="newDbName" placeholder="Username (e.g. Resident_Name)" class="flex-1 bg-slate-900/50 border border-slate-600 rounded-xl p-3.5 outline-none focus:border-blue-500 text-white transition placeholder:text-slate-500">
+                <input type="password" id="adminKey" placeholder="Master Key" class="w-full md:w-48 bg-slate-900/50 border border-slate-600 rounded-xl p-3.5 outline-none text-center text-white focus:border-blue-500 transition">
+                <button onclick="createDB()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-blue-600/20 transition transform active:scale-95">Create</button>
             </div>
+            <p class="text-xs text-slate-500 mt-3 ml-1">* Requires Master Key (14159265)</p>
         </div>
 
         <!-- DB Grid -->
-        <div id="loader" class="text-center py-20"><i class="fa-solid fa-circle-notch fa-spin text-3xl text-medical-500"></i></div>
-        <div id="dbGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 hidden"></div>
-
+        <div id="loader" class="text-center py-32"><i class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-500"></i></div>
+        <div id="dbGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 hidden pb-10"></div>
     </div>
+
+    <!-- Instructions Footer -->
+    <footer class="text-center py-6 text-slate-600 text-xs">
+        System v2.5 • Developed for Rajavithi Hospital
+    </footer>
 
     <script>
         // CONFIG
-        // Your Verified Deployment URL
         const API_URL = "https://script.google.com/macros/s/AKfycbxZrOuiFqLzmaX9T7PN7xqwV-jvE80dBuNk4Gc3nV1K8-ZZw0YUEYDupPg_RKc1JUFB/exec";
-        
-        // Link to where you host app.html
-        const APP_URL = "https://wasupon-sri.github.io/clinicalDB/app.html"; 
+        const APP_URL = "https://wasupon-sri.github.io/wardmatrix/app.html"; 
+
+        let currentRole = 'resident';
 
         window.onload = loadDatabases;
+
+        function setRole(role) {
+            currentRole = role;
+            document.getElementById('roleResident').classList.toggle('active', role === 'resident');
+            document.getElementById('roleChief').classList.toggle('active', role === 'chief');
+            document.getElementById('gridTitle').innerText = role === 'chief' ? "Select Ward to Oversee" : "Select Your Database";
+        }
 
         function toggleCreate() {
             const el = document.getElementById('createPanel');
             el.classList.toggle('hidden');
+            if(!el.classList.contains('hidden')) document.getElementById('newDbName').focus();
         }
 
         async function loadDatabases() {
@@ -80,36 +118,56 @@
             document.getElementById('loader').classList.add('hidden');
             const grid = document.getElementById('dbGrid');
             grid.classList.remove('hidden');
-            grid.innerHTML = users.map(u => `
-                <div class="bg-slate-800 border border-slate-700 p-5 rounded-2xl hover:border-medical-500 transition group relative">
-                    <div class="flex justify-between items-start mb-3">
-                        <div class="w-10 h-10 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center font-bold text-lg border border-slate-600 group-hover:bg-medical-500 group-hover:text-white transition">
-                            ${u.charAt(0).toUpperCase()}
-                        </div>
-                        <i class="fa-solid fa-chevron-right text-slate-600 group-hover:text-medical-500"></i>
+            grid.innerHTML = users.map(u => {
+                const initial = u.charAt(0).toUpperCase();
+                return `
+                <div onclick="enterApp('${u}')" class="user-card cursor-pointer bg-surface-800/50 border border-slate-700/50 p-6 rounded-2xl transition group relative overflow-hidden backdrop-blur-sm">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                        <i class="fa-solid fa-user-doctor text-6xl text-white"></i>
                     </div>
-                    <h3 class="font-bold text-lg mb-4 truncate">${u}</h3>
-                    <a href="${APP_URL}?db=${u}" class="block text-center bg-slate-700 hover:bg-medical-600 text-white py-2 rounded-lg font-bold text-sm transition">
-                        Enter Ward
-                    </a>
+                    <div class="flex items-center gap-4 mb-4 relative z-10">
+                        <div class="w-12 h-12 rounded-full bg-slate-700/50 text-blue-400 flex items-center justify-center font-bold text-xl border border-slate-600 group-hover:bg-blue-500 group-hover:text-white group-hover:border-blue-400 transition shadow-inner">
+                            ${initial}
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg text-white truncate w-32 leading-tight">${u}</h3>
+                            <p class="text-xs text-slate-400 group-hover:text-blue-300 transition">Active User</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between mt-2 pt-4 border-t border-slate-700/50">
+                        <span class="text-xs font-mono text-slate-500">DB Access</span>
+                        <i class="fa-solid fa-arrow-right text-slate-600 group-hover:text-blue-400 transition transform group-hover:translate-x-1"></i>
+                    </div>
                 </div>
-            `).join('');
+            `}).join('');
+        }
+
+        function enterApp(dbName) {
+            const roleParam = currentRole === 'chief' ? '&role=chief' : '';
+            window.location.href = `${APP_URL}?db=${dbName}${roleParam}`;
         }
 
         async function createDB() {
-            const name = document.getElementById('newDbName').value;
-            const key = document.getElementById('adminKey').value;
-            if(!name || !key) return alert("Fill all fields");
+            const name = document.getElementById('newDbName').value.trim();
+            const key = document.getElementById('adminKey').value.trim();
+            if(!name || !key) return alert("Please fill all fields");
             
-            const btn = event.target; btn.innerText = "...";
-            const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'admin_create_user', dbName: name, adminKey: key})});
-            const json = await res.json();
+            const btn = event.target; 
+            const originalText = btn.innerText;
+            btn.innerText = "Creating..."; btn.disabled = true;
             
-            if(json.status === 'success') { 
-                document.getElementById('newDbName').value = ""; 
-                loadDatabases(); 
-            } else { alert(json.error); }
-            btn.innerText = "Create";
+            try {
+                const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'admin_create_user', dbName: name, adminKey: key})});
+                const json = await res.json();
+                
+                if(json.status === 'success') { 
+                    document.getElementById('newDbName').value = ""; 
+                    document.getElementById('adminKey').value = "";
+                    toggleCreate();
+                    loadDatabases(); 
+                } else { alert(json.error || "Creation failed"); }
+            } catch(e) { alert("Network error"); }
+            finally { btn.innerText = originalText; btn.disabled = false; }
         }
     </script>
 </body>
