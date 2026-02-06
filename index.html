@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ResidencyWardMx Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Sarabun', 'sans-serif'] },
+                    colors: { medical: { 500: '#0ea5e9', 600: '#0284c7', 900: '#0c4a6e' } }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen font-sans">
+
+    <div class="container mx-auto p-6 max-w-4xl">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-10">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-medical-500 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-medical-500/20">
+                    <i class="fa-solid fa-hospital-user"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold">ResidencyWardMx</h1>
+                    <p class="text-slate-400 text-sm">Residency Ward Manager v2.0</p>
+                </div>
+            </div>
+            <button onclick="toggleCreate()" class="w-10 h-10 bg-slate-800 rounded-lg hover:bg-slate-700 transition flex items-center justify-center">
+                <i class="fa-solid fa-plus"></i>
+            </button>
+        </header>
+
+        <!-- New DB Form -->
+        <div id="createPanel" class="hidden bg-slate-800 p-6 rounded-2xl mb-8 border border-slate-700 animate-fade-in">
+            <h3 class="font-bold text-lg mb-4 text-medical-500">Create New User Database</h3>
+            <div class="flex gap-2">
+                <input type="text" id="newDbName" placeholder="e.g. Resident_Smith" class="flex-1 bg-slate-900 border border-slate-600 rounded-lg p-3 outline-none focus:border-medical-500">
+                <input type="password" id="adminKey" placeholder="Admin Key" class="w-32 bg-slate-900 border border-slate-600 rounded-lg p-3 outline-none text-center">
+                <button onclick="createDB()" class="bg-medical-600 hover:bg-medical-500 px-6 rounded-lg font-bold">Create</button>
+            </div>
+        </div>
+
+        <!-- DB Grid -->
+        <div id="loader" class="text-center py-20"><i class="fa-solid fa-circle-notch fa-spin text-3xl text-medical-500"></i></div>
+        <div id="dbGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 hidden"></div>
+
+    </div>
+
+    <script>
+        // CONFIG
+        // Your Verified Deployment URL
+        const API_URL = "https://script.google.com/macros/s/AKfycbxZrOuiFqLzmaX9T7PN7xqwV-jvE80dBuNk4Gc3nV1K8-ZZw0YUEYDupPg_RKc1JUFB/exec";
+        
+        // Link to where you host app.html
+        const APP_URL = "https://wasupon-sri.github.io/clinicalDB/app.html"; 
+
+        window.onload = loadDatabases;
+
+        function toggleCreate() {
+            const el = document.getElementById('createPanel');
+            el.classList.toggle('hidden');
+        }
+
+        async function loadDatabases() {
+            try {
+                const res = await fetch(`${API_URL}?action=admin_list_users`);
+                const json = await res.json();
+                renderGrid(json.users);
+            } catch(e) { alert("Failed to load databases"); }
+        }
+
+        function renderGrid(users) {
+            document.getElementById('loader').classList.add('hidden');
+            const grid = document.getElementById('dbGrid');
+            grid.classList.remove('hidden');
+            grid.innerHTML = users.map(u => `
+                <div class="bg-slate-800 border border-slate-700 p-5 rounded-2xl hover:border-medical-500 transition group relative">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="w-10 h-10 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center font-bold text-lg border border-slate-600 group-hover:bg-medical-500 group-hover:text-white transition">
+                            ${u.charAt(0).toUpperCase()}
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-slate-600 group-hover:text-medical-500"></i>
+                    </div>
+                    <h3 class="font-bold text-lg mb-4 truncate">${u}</h3>
+                    <a href="${APP_URL}?db=${u}" class="block text-center bg-slate-700 hover:bg-medical-600 text-white py-2 rounded-lg font-bold text-sm transition">
+                        Enter Ward
+                    </a>
+                </div>
+            `).join('');
+        }
+
+        async function createDB() {
+            const name = document.getElementById('newDbName').value;
+            const key = document.getElementById('adminKey').value;
+            if(!name || !key) return alert("Fill all fields");
+            
+            const btn = event.target; btn.innerText = "...";
+            const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'admin_create_user', dbName: name, adminKey: key})});
+            const json = await res.json();
+            
+            if(json.status === 'success') { 
+                document.getElementById('newDbName').value = ""; 
+                loadDatabases(); 
+            } else { alert(json.error); }
+            btn.innerText = "Create";
+        }
+    </script>
+</body>
+</html>
