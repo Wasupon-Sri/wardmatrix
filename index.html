@@ -27,6 +27,10 @@
         .user-card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5); border-color: #3b82f6; }
         .animate-fade-in { animation: fadeIn 0.5s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Custom Radio for Creation Panel */
+        .role-radio:checked + div { background-color: #3b82f6; color: white; border-color: #3b82f6; }
+        .role-radio:checked + div i { color: white !important; }
     </style>
 </head>
 <body class="flex flex-col antialiased">
@@ -44,7 +48,7 @@
                 </div>
             </div>
             
-            <!-- Role Toggle -->
+            <!-- Role Toggle (Tabs) -->
             <div class="glass-panel p-1.5 rounded-xl flex gap-1">
                 <button onclick="setRole('resident')" id="roleResident" class="role-btn active px-6 py-2.5 rounded-lg text-sm font-bold text-slate-400 transition-all duration-300 flex items-center gap-2">
                     <i class="fa-solid fa-user-doctor"></i> Ward Resident
@@ -58,18 +62,40 @@
         <!-- Action Bar -->
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-xl font-bold text-slate-200" id="gridTitle">Select Database</h2>
-            <button onclick="toggleCreate()" class="glass-panel hover:bg-white/5 px-4 py-3 rounded-xl transition text-sm font-bold flex items-center gap-2 border border-white/10">
-                <i class="fa-solid fa-plus text-blue-400"></i> New User
+            <button onclick="toggleCreate()" class="glass-panel hover:bg-white/5 px-4 py-3 rounded-xl transition text-sm font-bold flex items-center gap-2 border border-white/10 text-blue-400">
+                <i class="fa-solid fa-plus"></i> New User
             </button>
         </div>
 
         <!-- New User Form -->
         <div id="createPanel" class="hidden glass-panel p-6 rounded-2xl mb-8 animate-fade-in border-l-4 border-blue-500">
             <h3 class="font-bold text-lg mb-4 text-white">Initialize New Ward Database</h3>
-            <div class="flex flex-col md:flex-row gap-3">
-                <input type="text" id="newDbName" placeholder="Username (e.g. Resident_Name)" class="flex-1 bg-slate-900/50 border border-slate-600 rounded-xl p-3.5 outline-none focus:border-blue-500 text-white transition placeholder:text-slate-500">
-                <input type="password" id="adminKey" placeholder="Master Key (Required)" class="w-full md:w-48 bg-slate-900/50 border border-slate-600 rounded-xl p-3.5 outline-none text-center text-white focus:border-blue-500 transition">
-                <button onclick="createDB()" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-blue-600/20 transition transform active:scale-95">Create</button>
+            
+            <div class="flex flex-col gap-4">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <input type="text" id="newDbName" placeholder="Username (e.g. Resident_Name)" class="flex-1 bg-slate-900/50 border border-slate-600 rounded-xl p-3.5 outline-none focus:border-blue-500 text-white transition placeholder:text-slate-500">
+                    
+                    <!-- Role Selection Radio -->
+                    <div class="flex gap-2 w-full md:w-auto">
+                        <label class="cursor-pointer flex-1">
+                            <input type="radio" name="newRole" value="resident" class="role-radio hidden" checked>
+                            <div class="border border-slate-600 rounded-xl p-3.5 px-6 text-center text-sm font-bold text-slate-400 transition hover:bg-slate-800 flex items-center justify-center whitespace-nowrap">
+                                <i class="fa-solid fa-user-doctor mr-2 text-blue-400"></i> Resident
+                            </div>
+                        </label>
+                        <label class="cursor-pointer flex-1">
+                            <input type="radio" name="newRole" value="chief" class="role-radio hidden">
+                            <div class="border border-slate-600 rounded-xl p-3.5 px-6 text-center text-sm font-bold text-slate-400 transition hover:bg-slate-800 flex items-center justify-center whitespace-nowrap">
+                                <i class="fa-solid fa-user-tie mr-2 text-orange-400"></i> Chief
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <button onclick="createDB()" class="w-full bg-blue-600 hover:bg-blue-500 text-white px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-blue-600/20 transition transform active:scale-[0.98] flex items-center justify-center gap-2">
+                    Verify & Create <i class="fa-solid fa-arrow-right"></i>
+                </button>
+                <p class="text-xs text-slate-500 ml-1">* Master Key will be requested upon clicking Create</p>
             </div>
         </div>
 
@@ -78,9 +104,8 @@
         <div id="dbGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 hidden pb-10"></div>
     </div>
 
-    <!-- Instructions Footer -->
     <footer class="text-center py-6 text-slate-600 text-xs">
-        System v3.0 • Developed for Rajavithi Hospital
+        System v3.2 • Developed for Rajavithi Hospital
     </footer>
 
     <script>
@@ -89,6 +114,7 @@
         const APP_URL = "https://wasupon-sri.github.io/wardmatrix/app.html"; 
 
         let currentRole = 'resident';
+        let allUsers = [];
 
         window.onload = loadDatabases;
 
@@ -97,76 +123,106 @@
             document.getElementById('roleResident').classList.toggle('active', role === 'resident');
             document.getElementById('roleChief').classList.toggle('active', role === 'chief');
             document.getElementById('gridTitle').innerText = role === 'chief' ? "Select Ward to Oversee" : "Select Your Database";
+            
+            // Filter view immediately
+            renderGrid();
         }
 
         function toggleCreate() {
             const el = document.getElementById('createPanel');
             el.classList.toggle('hidden');
-            if(!el.classList.contains('hidden')) document.getElementById('newDbName').focus();
+            if(!el.classList.contains('hidden')) {
+                document.getElementById('newDbName').focus();
+                // Auto-select radio based on current tab
+                const radios = document.getElementsByName('newRole');
+                for(const r of radios) { if(r.value === currentRole) r.checked = true; }
+            }
         }
 
         async function loadDatabases() {
             try {
                 const res = await fetch(`${API_URL}?action=admin_list_users`);
                 const json = await res.json();
-                renderGrid(json.users);
-            } catch(e) { alert("Failed to load databases"); }
+                if(json.users) {
+                    allUsers = json.users;
+                    renderGrid();
+                }
+            } catch(e) { alert("Failed to load databases. Check internet."); }
         }
 
-        function renderGrid(users) {
+        function renderGrid() {
             document.getElementById('loader').classList.add('hidden');
             const grid = document.getElementById('dbGrid');
             grid.classList.remove('hidden');
-            grid.innerHTML = users.map(u => {
-                const initial = u.charAt(0).toUpperCase();
+            
+            // Filter users based on selected Role Tab
+            const filteredUsers = allUsers.filter(u => u.role === currentRole);
+            
+            if (filteredUsers.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-500 italic">No ${currentRole} databases found. Create one above.</div>`;
+                return;
+            }
+
+            grid.innerHTML = filteredUsers.map(u => {
+                const isChief = u.role === 'chief';
+                const initial = u.name.charAt(0).toUpperCase();
+                const roleColor = isChief ? 'text-orange-400' : 'text-blue-400';
+                const icon = isChief ? 'fa-user-tie' : 'fa-user-doctor';
+                const borderHover = isChief ? 'group-hover:border-orange-500' : 'group-hover:border-blue-500';
+                const bgHover = isChief ? 'group-hover:bg-orange-500' : 'group-hover:bg-blue-500';
+
                 return `
-                <div onclick="enterApp('${u}')" class="user-card cursor-pointer bg-surface-800/50 border border-slate-700/50 p-6 rounded-2xl transition group relative overflow-hidden backdrop-blur-sm">
+                <div onclick="enterApp('${u.name}', '${u.role}')" class="user-card cursor-pointer bg-surface-800/50 border border-slate-700/50 p-6 rounded-2xl transition group relative overflow-hidden backdrop-blur-sm">
                     <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
-                        <i class="fa-solid fa-user-doctor text-6xl text-white"></i>
+                        <i class="fa-solid ${icon} text-6xl text-white"></i>
                     </div>
                     <div class="flex items-center gap-4 mb-4 relative z-10">
-                        <div class="w-12 h-12 rounded-full bg-slate-700/50 text-blue-400 flex items-center justify-center font-bold text-xl border border-slate-600 group-hover:bg-blue-500 group-hover:text-white group-hover:border-blue-400 transition shadow-inner">
+                        <div class="w-12 h-12 rounded-full bg-slate-700/50 ${roleColor} flex items-center justify-center font-bold text-xl border border-slate-600 ${bgHover} group-hover:text-white ${borderHover} transition shadow-inner">
                             ${initial}
                         </div>
                         <div>
-                            <h3 class="font-bold text-lg text-white truncate w-32 leading-tight">${u}</h3>
-                            <p class="text-xs text-slate-400 group-hover:text-blue-300 transition">Active User</p>
+                            <h3 class="font-bold text-lg text-white truncate w-32 leading-tight">${u.name}</h3>
+                            <p class="text-xs text-slate-400 ${isChief ? 'group-hover:text-orange-300' : 'group-hover:text-blue-300'} transition uppercase font-bold tracking-wide">${u.role}</p>
                         </div>
                     </div>
                     <div class="flex items-center justify-between mt-2 pt-4 border-t border-slate-700/50">
-                        <span class="text-xs font-mono text-slate-500">DB Access</span>
-                        <i class="fa-solid fa-arrow-right text-slate-600 group-hover:text-blue-400 transition transform group-hover:translate-x-1"></i>
+                        <span class="text-xs font-mono text-slate-500">Access</span>
+                        <i class="fa-solid fa-arrow-right text-slate-600 ${isChief ? 'group-hover:text-orange-400' : 'group-hover:text-blue-400'} transition transform group-hover:translate-x-1"></i>
                     </div>
                 </div>
             `}).join('');
         }
 
-        function enterApp(dbName) {
-            const roleParam = currentRole === 'chief' ? '&role=chief' : '';
-            window.location.href = `${APP_URL}?db=${dbName}${roleParam}`;
+        function enterApp(dbName, role) {
+            window.location.href = `${APP_URL}?db=${dbName}&role=${role}`;
         }
 
         async function createDB() {
             const name = document.getElementById('newDbName').value.trim();
-            const key = document.getElementById('adminKey').value.trim();
-            if(!name || !key) return alert("Please fill all fields");
+            const role = document.querySelector('input[name="newRole"]:checked').value;
             
+            if(!name) return alert("Please enter a username");
+            
+            // SECURE BROWSER PROMPT FOR MASTER KEY
+            const key = prompt("SECURITY CHECK\nPlease enter the Master Key to create a new database:");
+            if(!key) return; // User cancelled
+
             const btn = event.target; 
-            const originalText = btn.innerText;
-            btn.innerText = "Creating..."; btn.disabled = true;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "<i class='fa-solid fa-circle-notch fa-spin'></i> Creating..."; 
+            btn.disabled = true;
             
             try {
-                const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'admin_create_user', dbName: name, adminKey: key})});
+                const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'admin_create_user', dbName: name, adminKey: key, userRole: role})});
                 const json = await res.json();
                 
                 if(json.status === 'success') { 
                     document.getElementById('newDbName').value = ""; 
-                    document.getElementById('adminKey').value = "";
                     toggleCreate();
                     loadDatabases(); 
                 } else { alert(json.error || "Creation failed"); }
             } catch(e) { alert("Network error"); }
-            finally { btn.innerText = originalText; btn.disabled = false; }
+            finally { btn.innerHTML = originalText; btn.disabled = false; }
         }
     </script>
 </body>
