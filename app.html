@@ -320,7 +320,10 @@
                             if (pendingTodos.length > 3) todoHtml += `<div class="text-[9px] px-1.5 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded font-bold">+${pendingTodos.length - 3}</div>`;
                             todoHtml += `</div>`;
                         }
-                        const ownerTag = (ROLE === 'chief' && r.owner) ? `<div class="absolute top-0 right-0 bg-slate-800 text-white text-[9px] px-2 py-0.5 rounded-bl-lg z-10 font-bold opacity-80">${r.owner.substr(0,4)}</div>` : '';
+                        
+                        // FIX: Improved Tag Length (0-6) and visual clarity
+                        const ownerTag = (ROLE === 'chief' && r.owner) ? `<div class="absolute top-0 right-0 bg-slate-800 text-white text-[9px] px-2 py-0.5 rounded-bl-lg z-10 font-bold opacity-80">${(r.owner||'').substr(0,6)}</div>` : '';
+                        
                         grid.innerHTML += `<div onclick="handleItemClick('${r.id}', ${i})" class="bed-card cursor-pointer group ${isSelected?'selected':''}" style="background: linear-gradient(to bottom, ${bg} 0%, #ffffff 60%)">${ownerTag}${isSelected?'<div class="absolute top-2 right-2 text-medical-600"><i class="fa-solid fa-circle-check text-lg"></i></div>':''}<div class="p-3 flex-1 flex flex-col relative"><div class="flex justify-between items-start mb-1"><span class="text-2xl font-bold text-slate-800">${i}</span><div class="flex gap-1 pt-1">${consultChips}</div></div><div class="mt-1 mb-2"><h4 class="font-bold text-sm text-slate-700 leading-tight truncate">${r.name||'Unknown'}</h4><p class="text-[10px] font-mono text-slate-400 mt-0.5">HN: ${r.hn||'-'}</p></div>${todoHtml}</div></div>`;
                     });
                 }
@@ -437,8 +440,11 @@
                     const isSelected = selectedIds.has(r.id);
                     const selClass = isSelected ? 'ring-2 ring-medical-500 border-medical-500 bg-medical-50' : 'border-slate-200 hover:border-medical-400';
                     
+                    // FIX: Add OWNER TAG to matrix items for consistency
+                    const ownerTag = (ROLE === 'chief' && r.owner) ? `<span class="bg-slate-800 text-white text-[8px] px-1.5 py-0.5 rounded ml-auto">${(r.owner||'').substr(0,4)}</span>` : '';
+
                     // FIX: Use handleItemClick instead of openEditor
-                    html += `<div onclick="handleItemClick('${r.id}', ${r.bed_number})" class="bg-white p-3 rounded-lg border shadow-sm cursor-pointer transition ${selClass}"><div class="flex justify-between"><span class="font-bold text-sm text-slate-800">Bed ${r.bed_number}</span><span class="text-[10px] text-slate-400">${r.hn||''}</span></div><div class="text-xs text-slate-600 truncate">${r.name}</div></div>`; 
+                    html += `<div onclick="handleItemClick('${r.id}', ${r.bed_number})" class="bg-white p-3 rounded-lg border shadow-sm cursor-pointer transition ${selClass}"><div class="flex justify-between items-start"><span class="font-bold text-sm text-slate-800">Bed ${r.bed_number}</span>${ownerTag}</div><div class="flex justify-between mt-1"><span class="text-[10px] text-slate-400">${r.hn||''}</span></div><div class="text-xs text-slate-600 truncate mt-1">${r.name}</div></div>`; 
                 }); 
                 html += `</div></div>`; 
                 container.innerHTML += html; 
@@ -448,11 +454,29 @@
         function openEditor(id, bedNum) {
             toggleElement('editorModal', true); editingId = id; currentTodos = []; activeConsults = []; currentDischarged = false; originalOwner = null;
             const sel = document.getElementById('editBed'); sel.innerHTML = ""; for(let i=1; i<=100; i++) sel.innerHTML += `<option value="${i}">${i}</option>`;
-            if(ROLE === 'chief') { const resSel = document.getElementById('residentSelect'); document.getElementById('residentSelectorDiv').classList.remove('hidden'); resSel.innerHTML = availableResidents.map(r => `<option value="${r}">${r}</option>`).join(''); }
             
             if (id) {
-                const r = records.find(x => x.id === id); originalOwner = r.owner;
-                if(ROLE === 'chief') document.getElementById('residentSelect').value = originalOwner;
+                const r = records.find(x => x.id === id); 
+                originalOwner = r.owner;
+                
+                // --- FIX: Safely populate resident selector ---
+                if(ROLE === 'chief') { 
+                    const resSel = document.getElementById('residentSelect'); 
+                    document.getElementById('residentSelectorDiv').classList.remove('hidden'); 
+                    
+                    // Add standard list
+                    let opts = availableResidents.map(r => `<option value="${r}">${r}</option>`);
+                    
+                    // CRITICAL FIX: If current owner is NOT in standard list (e.g. is Admin/Chief), add them dynamically
+                    // This prevents "Default to first item" bug which changes ownership silently
+                    if (originalOwner && !availableResidents.includes(originalOwner)) {
+                        opts.unshift(`<option value="${originalOwner}">${originalOwner} (Current)</option>`);
+                    }
+                    resSel.innerHTML = opts.join('');
+                    resSel.value = originalOwner;
+                }
+                // ----------------------------------------------
+
                 document.getElementById('editorTitle').innerText = "Edit Patient"; 
                 document.getElementById('editBed').value = r.bed_number; 
                 document.getElementById('editorBedBadge').innerText = `#${r.bed_number}`;
@@ -461,19 +485,21 @@
                 setDetails(r.details);
                 activeConsults = r.consult_units ? JSON.parse(JSON.stringify(r.consult_units)) : []; 
                 currentTodos = r.todo_list ? JSON.parse(JSON.stringify(r.todo_list)) : [];
-                
-                // --- FIX: Load discharge status ---
-                // Specifically check if the record is discharged to update the button state
                 currentDischarged = !!r.is_discharged; 
-                // ----------------------------------
-
                 setActiveColor(r.color_id); 
                 toggleElement('btnDelete', true);
             } else {
+                // New Patient
+                if(ROLE === 'chief') { 
+                    const resSel = document.getElementById('residentSelect'); 
+                    document.getElementById('residentSelectorDiv').classList.remove('hidden'); 
+                    resSel.innerHTML = availableResidents.map(r => `<option value="${r}">${r}</option>`).join('');
+                    originalOwner = resSel.value; // Default to first resident
+                }
+
                 document.getElementById('editorTitle').innerText = "Admit Patient"; document.getElementById('editBed').value = bedNum || 1; document.getElementById('editorBedBadge').innerText = `#${bedNum||1}`;
                 document.getElementById('editHN').value = ""; document.getElementById('editName').value = ""; setDetails(""); setActiveColor('#ffffff'); toggleElement('btnDelete', false);
                 currentTodos = [{text: "", done: false}, {text: "", done: false}];
-                if(ROLE === 'chief') originalOwner = document.getElementById('residentSelect').value;
             }
             renderConsults(); renderTodos(); updateDischargeBtn();
         }
