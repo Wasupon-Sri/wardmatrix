@@ -189,6 +189,12 @@
         const API_URL = "https://script.google.com/macros/s/AKfycbxZrOuiFqLzmaX9T7PN7xqwV-jvE80dBuNk4Gc3nV1K8-ZZw0YUEYDupPg_RKc1JUFB/exec";
         const STANDARD_UNITS = [{id: 'Cardio', icon: 'fa-heart-pulse'}, {id: 'Chest', icon: 'fa-lungs'}, {id: 'GI', icon: 'fa-burger'},{id: 'Neuro', icon: 'fa-brain'}, {id: 'Nephro', icon: 'fa-kidney'}, {id: 'ID', icon: 'fa-virus'}, {id: 'Hemato', icon: 'fa-droplet'}, {id: 'Onco', icon: 'fa-radiation'}, {id: 'Endo', icon: 'fa-cube'},{id: 'Rheumato', icon: 'fa-bone'}, {id: 'Skin', icon: 'fa-hand-dots'}];
         const COLORS = ['#ffffff', '#fecaca', '#fca5a5', '#f87171', '#fed7aa', '#fdba74', '#fb923c', '#fef08a', '#fde047', '#facc15', '#bbf7d0', '#86efac', '#4ade80', '#99f6e4', '#5eead4', '#2dd4bf', '#bfdbfe', '#93c5fd', '#60a5fa', '#ddd6fe', '#c4b5fd', '#a78bfa', '#fbcfe8', '#f9a8d4', '#f472b6', '#e2e8f0', '#cbd5e1', '#94a3b8'];
+        // NEW: Tag Colors for Resident identification
+        const TAG_COLORS = [
+            'bg-slate-800', 'bg-blue-600', 'bg-emerald-600', 
+            'bg-violet-600', 'bg-orange-600', 'bg-rose-600', 
+            'bg-cyan-600', 'bg-fuchsia-600', 'bg-indigo-600', 'bg-teal-600'
+        ];
 
         let DB_NAME = new URLSearchParams(window.location.search).get('db');
         let ROLE = new URLSearchParams(window.location.search).get('role') || 'resident';
@@ -212,6 +218,17 @@
             const savedBeds = localStorage.getItem('ward_total_beds'); if(savedBeds) { totalBeds = parseInt(savedBeds); document.getElementById('bedCountSlider').value = totalBeds; document.getElementById('bedCountLabel').innerText = totalBeds; }
             checkAuth(); renderColorPicker();
         };
+
+        // NEW: Helper to get deterministic color for owner
+        function getOwnerColor(name) {
+            if (!name) return 'bg-slate-800';
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) {
+                hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const index = Math.abs(hash) % TAG_COLORS.length;
+            return TAG_COLORS[index];
+        }
 
         async function checkAuth() { try { const res = await fetch(`${API_URL}?action=auth_check_status&db=${DB_NAME}`); const json = await res.json(); document.getElementById('loadingState').classList.add('hidden'); if (json.status === 'setup_needed') document.getElementById('setupForm').classList.remove('hidden'); else document.getElementById('authForm').classList.remove('hidden'); } catch(e) { alert("Connection Error"); } }
         async function verifyPassword() {
@@ -321,8 +338,9 @@
                             todoHtml += `</div>`;
                         }
                         
-                        // FIX: Improved Tag Length (0-6) and visual clarity
-                        const ownerTag = (ROLE === 'chief' && r.owner) ? `<div class="absolute top-0 right-0 bg-slate-800 text-white text-[9px] px-2 py-0.5 rounded-bl-lg z-10 font-bold opacity-80">${(r.owner||'').substr(0,6)}</div>` : '';
+                        // FIX: Dynamic Owner Color in Grid
+                        const tagColor = getOwnerColor(r.owner);
+                        const ownerTag = (ROLE === 'chief' && r.owner) ? `<div class="absolute top-0 right-0 ${tagColor} text-white text-[9px] px-2 py-0.5 rounded-bl-lg z-10 font-bold opacity-90 shadow-sm">${(r.owner||'').substr(0,6)}</div>` : '';
                         
                         grid.innerHTML += `<div onclick="handleItemClick('${r.id}', ${i})" class="bed-card cursor-pointer group ${isSelected?'selected':''}" style="background: linear-gradient(to bottom, ${bg} 0%, #ffffff 60%)">${ownerTag}${isSelected?'<div class="absolute top-2 right-2 text-medical-600"><i class="fa-solid fa-circle-check text-lg"></i></div>':''}<div class="p-3 flex-1 flex flex-col relative"><div class="flex justify-between items-start mb-1"><span class="text-2xl font-bold text-slate-800">${i}</span><div class="flex gap-1 pt-1">${consultChips}</div></div><div class="mt-1 mb-2"><h4 class="font-bold text-sm text-slate-700 leading-tight truncate">${r.name||'Unknown'}</h4><p class="text-[10px] font-mono text-slate-400 mt-0.5">HN: ${r.hn||'-'}</p></div>${todoHtml}</div></div>`;
                     });
@@ -440,8 +458,9 @@
                     const isSelected = selectedIds.has(r.id);
                     const selClass = isSelected ? 'ring-2 ring-medical-500 border-medical-500 bg-medical-50' : 'border-slate-200 hover:border-medical-400';
                     
-                    // FIX: Add OWNER TAG to matrix items for consistency
-                    const ownerTag = (ROLE === 'chief' && r.owner) ? `<span class="bg-slate-800 text-white text-[8px] px-1.5 py-0.5 rounded ml-auto">${(r.owner||'').substr(0,4)}</span>` : '';
+                    // FIX: Dynamic Owner Color in Matrix
+                    const tagColor = getOwnerColor(r.owner);
+                    const ownerTag = (ROLE === 'chief' && r.owner) ? `<span class="${tagColor} text-white text-[8px] px-1.5 py-0.5 rounded ml-auto shadow-sm">${(r.owner||'').substr(0,4)}</span>` : '';
 
                     // FIX: Use handleItemClick instead of openEditor
                     html += `<div onclick="handleItemClick('${r.id}', ${r.bed_number})" class="bg-white p-3 rounded-lg border shadow-sm cursor-pointer transition ${selClass}"><div class="flex justify-between items-start"><span class="font-bold text-sm text-slate-800">Bed ${r.bed_number}</span>${ownerTag}</div><div class="flex justify-between mt-1"><span class="text-[10px] text-slate-400">${r.hn||''}</span></div><div class="text-xs text-slate-600 truncate mt-1">${r.name}</div></div>`; 
