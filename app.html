@@ -25,41 +25,43 @@
     <style>
         body { background-color: #f8fafc; color: #334155; -webkit-tap-highlight-color: transparent; }
         .glass-header { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid #e2e8f0; }
+        
+        /* BED CARDS */
         .bed-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: var(--theme-shadow-card); transition: all 0.2s; min-height: 140px; display: flex; flex-direction: column; position: relative; overflow: hidden; }
         .bed-card:hover { border-color: #cbd5e1; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
         .bed-card.selected { border: 2px solid #0ea5e9; background-color: #f0f9ff; }
+        
+        /* High Contrast Vacant Bed */
         .bed-card.vacant { background: #f1f5f9; border: 1px solid #cbd5e1; border-style: dashed; justify-content: center; align-items: center; opacity: 0.8; min-height: 100px; }
         .bed-card.vacant:hover { opacity: 1; border-color: #94a3b8; background: #e2e8f0; cursor: pointer; }
+        .bed-card.vacant span { color: #94a3b8 !important; }
         
-        /* Fullscreen A4 Editor Layout */
+        /* Fullscreen A4 Editor */
         .fs-mode { 
             position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 9999 !important; 
             width: 100vw !important; height: 100vh !important; 
-            background-color: #e2e8f0 !important; /* Dim background */
-            display: flex; justify-content: center; align-items: center;
+            background-color: #ffffff !important; color: #1e293b !important;
+            padding: 60px max(20px, calc(50vw - 400px)) !important; 
+            font-size: 16pt !important; line-height: 1.6 !important; 
+            border: none !important; overflow-y: auto !important;
         }
         
-        /* The Paper itself */
-        .fs-paper {
-            width: 60%; height: 100%; 
-            background: white; 
-            box-shadow: 0 0 50px rgba(0,0,0,0.2);
-            padding: 60px;
-            font-size: 16pt; line-height: 1.6;
-            outline: none; resize: none; overflow-y: auto;
-            color: #1e293b;
-        }
-
         .consult-chip { padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; border: 1px solid transparent; transition: all 0.2s; }
         .consult-chip.active { background-color: #e0f2fe; color: #0284c7; border-color: #bae6fd; }
         .consult-chip.inactive { background-color: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; opacity: 0.7; }
+        
         .color-dot { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: transform 0.2s; }
         .color-dot.selected { border-color: #334155; transform: scale(1.1); box-shadow: 0 0 0 2px #cbd5e1; }
+        
         .matrix-col { min-width: 250px; background: #f8fafc; border-radius: 12px; padding: 12px; border: 1px solid #e2e8f0; }
+        
         .grid-1 { grid-template-columns: repeat(1, 1fr); } .grid-2 { grid-template-columns: repeat(2, 1fr); }
         .grid-3 { grid-template-columns: repeat(3, 1fr); } .grid-4 { grid-template-columns: repeat(4, 1fr); }
         .grid-5 { grid-template-columns: repeat(5, 1fr); } .grid-6 { grid-template-columns: repeat(6, 1fr); }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; } .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #e2e8f0; border-radius: 20px; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #e2e8f0; border-radius: 20px; }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden text-sm">
@@ -91,26 +93,41 @@
 
     <!-- MAIN APP -->
     <div id="appContainer" class="hidden flex-1 flex flex-col h-full bg-[#f8fafc]">
+        
+        <!-- Header -->
         <header class="glass-header h-16 flex items-center justify-between px-4 shrink-0 z-20">
             <div class="flex items-center gap-3">
-                <button onclick="toggleGridMenu()" class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-600 flex items-center justify-center shadow-sm hover:bg-slate-50 hover:text-medical-600 transition" title="Grid Settings"><i class="fa-solid fa-table-cells"></i></button>
+                <button onclick="toggleGridMenu()" class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-600 flex items-center justify-center shadow-sm hover:bg-slate-50 hover:text-medical-600 transition" title="Grid Settings">
+                    <i class="fa-solid fa-table-cells"></i>
+                </button>
                 <div class="leading-tight">
                     <h2 class="font-bold text-lg text-slate-800" id="headerWard">General Ward</h2>
                     <span id="roleBadge" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Resident View</span>
                 </div>
             </div>
             <div class="flex items-center gap-2">
+                 <!-- View Switcher -->
                  <div class="bg-slate-100 p-1 rounded-lg flex text-xs font-bold text-slate-500 mr-2 border border-slate-200">
                      <button onclick="switchView('grid')" id="viewBtnGrid" class="px-3 py-1.5 rounded-md bg-white shadow-sm text-medical-700 transition">Grid</button>
                      <button onclick="switchView('matrix')" id="viewBtnMatrix" class="px-3 py-1.5 rounded-md hover:bg-white/50 transition">Consults</button>
                      <button onclick="switchView('discharged')" id="viewBtnDischarged" class="px-3 py-1.5 rounded-md hover:bg-white/50 text-slate-400 hover:text-rose-500 transition">Discharged</button>
                  </div>
-                 <button onclick="changeWard()" class="bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold shadow-sm flex items-center gap-2 hover:bg-slate-50"><i class="fa-solid fa-right-left"></i> <span class="hidden sm:inline">Change Ward</span></button>
-                 <button onclick="toggleSelectMode()" id="btnSelectMode" class="w-10 h-10 rounded-lg bg-white border border-slate-200 text-slate-500 flex items-center justify-center hover:text-medical-600 shadow-sm" title="Select Multiple"><i class="fa-regular fa-square-check"></i></button>
-                 <button onclick="manualRefresh()" id="btnRefresh" class="w-10 h-10 rounded-lg bg-slate-800 text-white flex items-center justify-center shadow-md hover:bg-slate-700"><i class="fa-solid fa-rotate"></i></button>
+                 
+                 <button onclick="changeWard()" class="bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold shadow-sm flex items-center gap-2 hover:bg-slate-50">
+                    <i class="fa-solid fa-right-left"></i> <span class="hidden sm:inline">Change Ward</span>
+                 </button>
+                 
+                 <button onclick="toggleSelectMode()" id="btnSelectMode" class="w-10 h-10 rounded-lg bg-white border border-slate-200 text-slate-500 flex items-center justify-center hover:text-medical-600 shadow-sm" title="Select Multiple">
+                    <i class="fa-regular fa-square-check"></i>
+                 </button>
+                 
+                 <button onclick="manualRefresh()" id="btnRefresh" class="w-10 h-10 rounded-lg bg-slate-800 text-white flex items-center justify-center shadow-md hover:bg-slate-700">
+                    <i class="fa-solid fa-rotate"></i>
+                 </button>
             </div>
         </header>
 
+        <!-- Selection Toolbar -->
         <div id="selectionToolbar" class="hidden bg-slate-800 text-white px-4 py-2 flex justify-between items-center shadow-lg z-30">
             <span class="text-xs font-bold"><span id="selectCount">0</span> selected</span>
             <div class="flex gap-2">
@@ -120,6 +137,7 @@
             </div>
         </div>
 
+        <!-- Grid Settings Dropdown -->
         <div id="gridMenu" class="hidden absolute top-16 left-4 z-40 bg-white rounded-xl shadow-xl border border-slate-100 p-4 w-64 animate-fade-in">
             <h4 class="text-[10px] font-bold text-slate-400 uppercase mb-3">Grid Layout (Columns)</h4>
             <div class="grid grid-cols-3 gap-2 mb-3">
@@ -131,26 +149,54 @@
                 <button onclick="setGrid(6)" class="p-2 border rounded hover:bg-slate-50 text-xs font-bold">6 Cols</button>
             </div>
             <h4 class="text-[10px] font-bold text-slate-400 uppercase mb-2">Total Beds</h4>
-            <div class="flex items-center gap-2"><input type="range" min="10" max="100" step="1" id="bedCountSlider" oninput="updateBedCount(this.value)" class="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600"><span id="bedCountLabel" class="text-xs font-bold w-8 text-center">36</span></div>
+            <div class="flex items-center gap-2">
+                <input type="range" min="10" max="100" step="1" id="bedCountSlider" oninput="updateBedCount(this.value)" class="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600">
+                <span id="bedCountLabel" class="text-xs font-bold w-8 text-center">36</span>
+            </div>
         </div>
 
+        <!-- Main Content Area -->
         <main class="flex-1 overflow-y-auto p-4 md:p-6 relative" id="mainScroll">
-            <div id="viewGrid" class="block"><div id="bedGrid" class="grid gap-3 pb-20 transition-all duration-300"></div></div>
-            <div id="viewMatrix" class="hidden pb-20"><div id="matrixContainer" class="flex gap-4 overflow-x-auto pb-6 snap-x"></div></div>
-            <div id="viewDischarged" class="hidden pb-20"><h3 class="text-lg font-bold text-slate-600 mb-4 flex items-center gap-2"><i class="fa-solid fa-box-archive"></i> Archived Patients</h3><div id="dischargedList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div></div>
+            <!-- 1. BED GRID VIEW -->
+            <div id="viewGrid" class="block">
+                <div id="bedGrid" class="grid gap-3 pb-20 transition-all duration-300"></div>
+            </div>
+            
+            <!-- 2. CONSULTATION MATRIX VIEW -->
+            <div id="viewMatrix" class="hidden pb-20">
+                <div id="matrixContainer" class="flex gap-4 overflow-x-auto pb-6 snap-x"></div>
+            </div>
+
+            <!-- 3. DISCHARGED VIEW -->
+            <div id="viewDischarged" class="hidden pb-20">
+                <h3 class="text-lg font-bold text-slate-600 mb-4 flex items-center gap-2"><i class="fa-solid fa-box-archive"></i> Archived Patients</h3>
+                <div id="dischargedList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+            </div>
         </main>
 
-        <button onclick="openEditor(null)" class="fixed bottom-6 right-6 w-14 h-14 bg-slate-800 text-white rounded-full shadow-2xl flex items-center justify-center z-30 hover:scale-105 transition hover:bg-medical-600"><i class="fa-solid fa-plus text-xl"></i></button>
+        <!-- FAB -->
+        <button onclick="openEditor(null)" class="fixed bottom-6 right-6 w-14 h-14 bg-slate-800 text-white rounded-full shadow-2xl flex items-center justify-center z-30 hover:scale-105 transition hover:bg-medical-600">
+            <i class="fa-solid fa-plus text-xl"></i>
+        </button>
+
     </div>
 
     <!-- EDITOR MODAL (SPLIT SCREEN LAYOUT) -->
     <div id="editorModal" class="fixed inset-0 z-50 hidden">
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeEditor()"></div>
+        <!-- Maximize width for horizontal view -->
         <div class="absolute inset-x-0 bottom-0 top-12 md:top-10 md:inset-x-auto md:right-0 md:w-[90vw] md:max-w-7xl bg-white rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none flex flex-col shadow-2xl animate-slide-up">
+            
+            <!-- Header -->
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white z-10 shrink-0">
                 <div class="flex items-center gap-3"><div id="editorBedBadge" class="bg-slate-800 text-white text-xl font-bold px-3 py-1 rounded-lg">#01</div><div><h3 class="text-lg font-bold text-slate-800 leading-none" id="editorTitle">New Patient</h3><p class="text-[10px] font-bold text-slate-400 uppercase mt-0.5">Admit Details</p></div></div>
-                <div class="flex gap-2"><button onclick="toggleDischarge()" id="btnDischarge" class="px-4 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold transition hover:bg-slate-200">Archive</button><button onclick="closeEditor()" class="w-9 h-9 rounded-full bg-slate-50 text-slate-400 hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+                <div class="flex gap-2">
+                    <button onclick="toggleDischarge()" id="btnDischarge" class="px-4 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold transition hover:bg-slate-200">Archive</button>
+                    <button onclick="closeEditor()" class="w-9 h-9 rounded-full bg-slate-50 text-slate-400 hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-xmark text-lg"></i></button>
+                </div>
             </div>
+
+            <!-- Body (Horizontal Split) -->
             <div class="flex-1 overflow-hidden flex flex-col md:flex-row bg-white">
                 
                 <!-- LEFT PANEL (65%): Medical Details (Expanded) -->
@@ -168,20 +214,37 @@
 
                 <!-- RIGHT PANEL (35%): Metadata Sidebar -->
                 <div class="flex-1 overflow-y-auto p-5 space-y-5 bg-white custom-scrollbar md:w-[35%]">
-                    <div id="residentSelectorDiv" class="hidden flex flex-col space-y-1 mb-2 p-3 bg-orange-50 border border-orange-200 rounded-xl"><label class="text-[10px] font-bold text-orange-600 uppercase flex items-center gap-1"><i class="fa-solid fa-crown"></i> Assign to Resident</label><select id="residentSelect" class="w-full bg-white border border-orange-300 rounded-lg p-2 font-bold text-sm outline-none focus:ring-2 focus:ring-orange-200"></select></div>
+                    
+                    <!-- Chief Selector -->
+                    <div id="residentSelectorDiv" class="hidden flex flex-col space-y-1 mb-2 p-3 bg-orange-50 border border-orange-200 rounded-xl">
+                        <label class="text-[10px] font-bold text-orange-600 uppercase flex items-center gap-1"><i class="fa-solid fa-crown"></i> Assign to Resident</label>
+                        <select id="residentSelect" class="w-full bg-white border border-orange-300 rounded-lg p-2 font-bold text-sm outline-none focus:ring-2 focus:ring-orange-200"></select>
+                    </div>
+
+                    <!-- Basics -->
                     <div class="flex gap-4 p-4 bg-slate-50/80 rounded-2xl border border-slate-100">
                         <div class="w-24 space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Bed No.</label><select id="editBed" onchange="changeBedInEditor()" class="w-full bg-white border border-slate-200 rounded-lg p-2.5 font-bold text-center text-lg outline-none focus:border-medical-500 shadow-sm"></select></div>
                         <div class="flex-1 space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Name (Auto-fill)</label><input type="text" id="editName" class="w-full bg-white border border-slate-200 rounded-lg p-2.5 font-bold text-lg outline-none focus:border-medical-500 placeholder:font-normal placeholder:text-slate-300 shadow-sm" placeholder="e.g. Somchai"></div>
                     </div>
                     <div class="space-y-1 px-1"><label class="text-[10px] font-bold text-slate-400 uppercase">HN (Optional)</label><input type="text" id="editHN" class="w-full bg-transparent border-b border-slate-200 p-2 font-mono text-sm outline-none focus:border-medical-500 transition" placeholder="HN 1234567"></div>
-                    <div class="md:hidden space-y-2"><label class="text-[10px] font-bold text-slate-400 uppercase px-1 flex justify-between"><span>Medical Details</span><span class="text-medical-500" onclick="toggleFullScreen()">Expand</span></label><textarea id="editDetailsMobile" oninput="syncDetails(this)" class="w-full bg-yellow-50/30 border border-yellow-200/50 rounded-xl p-4 text-slate-700 leading-relaxed outline-none min-h-[150px]" placeholder="Clinical notes..."></textarea></div>
+                    
+                    <!-- Mobile Details Fallback -->
+                    <div class="md:hidden space-y-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase px-1 flex justify-between"><span>Medical Details</span><span class="text-medical-500" onclick="toggleFullScreen()">Expand</span></label>
+                        <textarea id="editDetailsMobile" oninput="syncDetails(this)" class="w-full bg-yellow-50/30 border border-yellow-200/50 rounded-xl p-4 text-slate-700 leading-relaxed outline-none min-h-[150px]" placeholder="Clinical notes..."></textarea>
+                    </div>
+
+                    <!-- Consults & Tags -->
                     <div class="space-y-2"><label class="text-[10px] font-bold text-slate-400 uppercase px-1">Status Tag</label><div id="colorContainer" class="flex flex-wrap gap-2 px-1"></div></div>
                     <div class="space-y-2"><label class="text-[10px] font-bold text-slate-400 uppercase px-1">Consults</label><div id="consultContainer" class="flex flex-wrap gap-2 px-1 mb-2"></div><div class="flex gap-2 px-1 items-center"><input type="text" id="customConsult" placeholder="Add Other..." class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-medical-500 flex-1"><button onclick="addCustomConsult()" class="bg-slate-800 text-white w-8 h-8 rounded-lg text-xs font-bold"><i class="fa-solid fa-plus"></i></button></div></div>
+                    
+                    <!-- To-Do -->
                     <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
                         <div class="flex justify-between items-center mb-3"><h4 class="font-bold text-xs text-slate-500 uppercase"><i class="fa-solid fa-list-check mr-1"></i> To-Do List</h4><button onclick="addTodo()" class="w-6 h-6 rounded bg-white border border-slate-200 text-medical-600 flex items-center justify-center hover:shadow-sm"><i class="fa-solid fa-plus text-xs"></i></button></div>
                         <div id="todoContainer" class="space-y-2"></div>
                         <datalist id="taskSuggestions"><option value="Follow Lab"><option value="Film Chest"><option value="D/C Summary"><option value="Family Meeting"><option value="Consult Cardio"><option value="Review Meds"><option value="Order CT Scan"><option value="Prepare OR"><option value="Sputum Exam"><option value="Keep NPO"><option value="Off Foley"><option value="Change Antibiotic"></datalist>
                     </div>
+
                     <div class="pt-4"><button onclick="deleteRecord()" id="btnDelete" class="w-full text-rose-400 text-xs font-bold py-3 hover:text-rose-600 transition flex items-center justify-center gap-2"><i class="fa-regular fa-trash-can"></i> Delete Permanently</button></div>
                 </div>
             </div>
@@ -195,12 +258,13 @@
 
     <!-- Fullscreen Overlay with Save Button -->
     <div id="fullscreenOverlay" class="hidden fs-mode">
-        <textarea id="fullscreenEditor" ondblclick="toggleFullScreen()" class="fs-paper shadow-2xl" placeholder="Medical Details..."></textarea>
-        <div class="absolute top-6 right-6 flex gap-3">
-             <button onclick="toggleFullScreen()" class="bg-slate-800 text-white px-6 py-3 rounded-full text-sm font-bold shadow-lg hover:bg-slate-900 transition flex items-center gap-2 transform active:scale-95"><i class="fa-solid fa-compress"></i> Exit Fullscreen</button>
-        </div>
-        <div class="absolute bottom-6 right-6">
-             <button onclick="saveRecord()" class="bg-emerald-600 text-white px-6 py-3 rounded-full text-sm font-bold shadow-lg hover:bg-emerald-700 transition flex items-center gap-2 transform active:scale-95"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+        <div class="relative w-full h-full max-w-5xl mx-auto flex flex-col bg-white shadow-2xl">
+            <textarea id="fullscreenEditor" class="w-full h-full bg-white text-slate-800 text-xl leading-relaxed outline-none resize-none p-8 font-sans" placeholder="Medical Details..."></textarea>
+            
+            <div class="absolute top-6 right-6 flex gap-3">
+                <button onclick="saveRecord()" class="bg-emerald-600 text-white px-6 py-3 rounded-full text-sm font-bold shadow-lg hover:bg-emerald-700 transition flex items-center gap-2 transform active:scale-95"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+                <button onclick="toggleFullScreen()" class="bg-slate-800 text-white px-6 py-3 rounded-full text-sm font-bold shadow-lg hover:bg-slate-900 transition flex items-center gap-2 transform active:scale-95"><i class="fa-solid fa-compress"></i> Exit Fullscreen</button>
+            </div>
         </div>
     </div>
 
@@ -245,7 +309,7 @@
         async function verifyPassword() {
             const p = document.getElementById('loginPin').value; const btn = document.getElementById('btnLogin'); btn.innerText = "...";
             try {
-                const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'auth_verify', db: DB_NAME, password: p}) });
+                const res = await fetch(API_URL, { method: 'POST', headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify({action: 'auth_verify', db: DB_NAME, password: p}) });
                 const json = await res.json();
                 if (json.status === 'success') {
                     PASSWORD = p;
@@ -255,7 +319,7 @@
                     changeWard(); 
                     startAutomation();
                 } else { alert("Incorrect Password"); }
-            } catch(e) { alert("Network Error"); } finally { btn.innerText = "Login"; }
+            } catch(e) { alert("Login Error: " + e.message); } finally { btn.innerText = "Login"; }
         }
         async function setupPassword() { const p = document.getElementById('setupPin').value; if(!p) return; await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'auth_set_password', db: DB_NAME, password: p}) }); location.reload(); }
 
@@ -266,18 +330,25 @@
 
         async function fetchData(silent = false) {
             if(!silent) document.getElementById('btnRefresh').classList.add('animate-spin');
-            if (ROLE === 'chief') {
-                const listRes = await fetch(`${API_URL}?action=admin_list_users`);
-                const listJson = await listRes.json();
-                availableResidents = listJson.users.filter(u => u.role === 'resident').map(u => u.name);
-                const promises = listJson.users.map(u => fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'read', db: u.name, password: PASSWORD}) }).then(r => r.json()).then(data => data.map(rec => ({...processRecord(rec), owner: u.name}))).catch(() => []));
-                const results = await Promise.all(promises);
-                records = results.flat();
-            } else {
-                const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'read', db: DB_NAME, password: PASSWORD}) });
-                const json = await res.json();
-                records = json.map(processRecord);
+            
+            try {
+                if (ROLE === 'chief') {
+                    const listRes = await fetch(`${API_URL}?action=admin_list_users`);
+                    const listJson = await listRes.json();
+                    availableResidents = listJson.users.filter(u => u.role === 'resident').map(u => u.name);
+                    const promises = listJson.users.map(u => fetch(API_URL, { method: 'POST', headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify({action: 'read', db: u.name, password: PASSWORD}) }).then(r => r.json()).then(data => Array.isArray(data) ? data.map(rec => ({...processRecord(rec), owner: u.name})) : []).catch(() => []));
+                    const results = await Promise.all(promises);
+                    records = results.flat();
+                } else {
+                    const res = await fetch(API_URL, { method: 'POST', headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify({action: 'read', db: DB_NAME, password: PASSWORD}) });
+                    const json = await res.json();
+                    if(json.error) throw new Error(json.error);
+                    records = Array.isArray(json) ? json.map(processRecord) : [];
+                }
+            } catch(e) {
+                if(!silent) console.error("Fetch Error:", e);
             }
+
             wards = new Set(["General Ward"]); records.forEach(r => { if(r.ward) wards.add(r.ward); });
             renderView();
             if(!silent) document.getElementById('btnRefresh').classList.remove('animate-spin');
@@ -392,22 +463,17 @@
         function createNewWard() { const n = document.getElementById('newWardName').value.trim(); if(n) { currentWard = n; wards.add(n); changeWard(); renderView(); }}
         function selectWard(n) { currentWard = n; toggleElement('wardModal', false); renderView(); }
         
-        // SAVE WITH TOAST
         async function saveRecord(silent = false) {
             const btn = document.getElementById('btnSave'); if(!silent) btn.innerText = "Saving...";
-            
-            // Toast: Saving... (Black)
             const toast = document.getElementById('saveToast');
             const toastMsg = document.getElementById('saveToastMsg');
             if(!silent) {
                 toast.className = "fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[10001] px-6 py-3 rounded-full text-white font-bold shadow-2xl transition-all duration-300 flex items-center gap-3 bg-slate-900 translate-y-0 opacity-100";
                 toastMsg.innerText = "Saving...";
             }
-
             const targetBed = document.getElementById('editBed').value; const targetName = document.getElementById('editName').value.trim();
             const conflict = records.find(r => r.id !== editingId && r.ward === currentWard && !r.is_discharged && (r.bed_number == targetBed || (targetName && r.name === targetName)));
             if (conflict && !silent) { if(!confirm(`CONFLICT DETECTED!\nBed ${conflict.bed_number} occupied by ${conflict.name}.\nOverwrite?`)) { btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`; toast.classList.add('translate-y-10', 'opacity-0'); return; } }
-            
             let name = targetName; if(!name) { const count = records.length + 1; name = `Patient_${String(count).padStart(3, '0')}`; }
             const validTodos = currentTodos.filter(t => t.text.trim() !== "");
             const detailsVal = document.getElementById('editDetailsDesktop').value;
@@ -415,18 +481,12 @@
             let targetDB = DB_NAME;
             if (ROLE === 'chief') { targetDB = document.getElementById('residentSelect').value; if(!targetDB) { alert("Please select a resident."); return; } if(originalOwner && originalOwner !== targetDB) { await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: originalOwner, password: PASSWORD, requester: DB_NAME, id: p.id}) }); } }
             const payload = { action: 'save', db: targetDB, requester: DB_NAME, password: PASSWORD, ...p };
-            
             if (ROLE !== 'chief') { const clean = {...p, consult_units: activeConsults, todo_list: validTodos}; const idx = records.findIndex(r => r.id === p.id); if(idx > -1) records[idx] = clean; else records.push(clean); if(!silent) renderView(); }
-            
-            // Only close modal if NOT in fullscreen mode
-            if(!silent && document.getElementById('fullscreenOverlay').classList.contains('hidden')) { closeEditor(); }
-            
-            await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+            if(!silent && !document.getElementById('fullscreenOverlay').classList.contains('hidden')) {} else if (!silent) { closeEditor(); }
+            await fetch(API_URL, { method: 'POST', headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify(payload) });
             if(ROLE === 'chief') fetchData(true);
-            
             if(!silent) {
                 btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`;
-                // Toast: Saved (Green)
                 toast.className = "fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[10001] px-6 py-3 rounded-full text-white font-bold shadow-2xl transition-all duration-300 flex items-center gap-3 bg-emerald-600 translate-y-0 opacity-100";
                 toastMsg.innerText = "Saved Successfully";
                 setTimeout(() => { toast.classList.add('translate-y-10', 'opacity-0'); }, 2000);
@@ -437,15 +497,7 @@
         function manualRefresh() { fetchData(); }
         function toggleElement(id, show) { const el = document.getElementById(id); if(show) el.classList.remove('hidden'); else el.classList.add('hidden'); }
         function toggleDischarge() { currentDischarged = !currentDischarged; const btn = document.getElementById('btnDischarge'); btn.innerText = currentDischarged ? "Discharged" : "Archive"; btn.className = currentDischarged ? "px-4 py-2 bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition" : "px-4 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold transition hover:bg-slate-200"; }
-        
-        function toggleFullScreen() { 
-            const fsEl = document.getElementById('fullscreenOverlay'); 
-            fsEl.classList.toggle('hidden'); 
-            if(!fsEl.classList.contains('hidden')) { 
-                const editor = document.getElementById('fullscreenEditor'); 
-                editor.focus(); 
-            }
-        }
+        function toggleFullScreen() { const fsEl = document.getElementById('fullscreenOverlay'); fsEl.classList.toggle('hidden'); if(!fsEl.classList.contains('hidden')) { const editor = document.getElementById('fullscreenEditor'); editor.focus(); } }
         
         function renderDischarged() {
             const list = document.getElementById('dischargedList'); list.innerHTML = "";
