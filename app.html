@@ -276,7 +276,20 @@
                     const listRes = await fetch(`${API_URL}?action=admin_list_users`);
                     const listJson = await listRes.json();
                     availableResidents = listJson.users.filter(u => u.role === 'resident').map(u => u.name);
-                    const promises = listJson.users.map(u => fetch(API_URL, { method: 'POST', headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify({action: 'read', db: u.name, password: PASSWORD}) }).then(r => r.json()).then(data => Array.isArray(data) ? data.map(rec => ({...processRecord(rec), owner: u.name})) : []).catch(() => []));
+                    
+                    // --- FIX: Add 'requester' stamp to fetch so backend knows it's a Chief ---
+                    const promises = listJson.users.map(u => fetch(API_URL, { 
+                        method: 'POST', 
+                        headers: {"Content-Type": "text/plain;charset=utf-8"}, 
+                        body: JSON.stringify({
+                            action: 'read', 
+                            db: u.name, 
+                            password: PASSWORD, // The Chief's password
+                            requester: DB_NAME // STAMP: I am the Chief
+                        }) 
+                    }).then(r => r.json()).then(data => Array.isArray(data) ? data.map(rec => ({...processRecord(rec), owner: u.name})) : []).catch(() => []));
+                    // ------------------------------------------------------------------------
+
                     const results = await Promise.all(promises);
                     records = results.flat();
                 } else {
