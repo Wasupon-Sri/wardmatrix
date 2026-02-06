@@ -37,6 +37,10 @@
         .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background-color: #f97316; }
         input:checked + .slider:before { transform: translateX(20px); }
+        
+        /* Admin Elements */
+        .admin-element { display: none !important; }
+        .admin-mode .admin-element { display: flex !important; }
     </style>
 </head>
 <body class="flex flex-col antialiased">
@@ -47,9 +51,18 @@
                 <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-blue-500/20"><i class="fa-solid fa-staff-snake"></i></div>
                 <div><h1 class="text-3xl font-bold tracking-tight">Ward Manager</h1><p class="text-slate-400 text-sm font-medium tracking-wide">Internal Medicine • Rajavithi</p></div>
             </div>
-            <div class="glass-panel p-1.5 rounded-xl flex gap-1">
-                <button onclick="setRole('resident')" id="roleResident" class="role-btn active px-6 py-2.5 rounded-lg text-sm font-bold text-slate-400 transition-all duration-300 flex items-center gap-2"><i class="fa-solid fa-user-doctor"></i> Ward Resident</button>
-                <button onclick="setRole('chief')" id="roleChief" class="role-btn px-6 py-2.5 rounded-lg text-sm font-bold text-slate-400 transition-all duration-300 flex items-center gap-2"><i class="fa-solid fa-user-tie"></i> Ward Chief</button>
+            
+            <div class="flex gap-3">
+                <!-- Role Toggle -->
+                <div class="glass-panel p-1.5 rounded-xl flex gap-1">
+                    <button onclick="setRole('resident')" id="roleResident" class="role-btn active px-6 py-2.5 rounded-lg text-sm font-bold text-slate-400 transition-all duration-300 flex items-center gap-2"><i class="fa-solid fa-user-doctor"></i> Ward Resident</button>
+                    <button onclick="setRole('chief')" id="roleChief" class="role-btn px-6 py-2.5 rounded-lg text-sm font-bold text-slate-400 transition-all duration-300 flex items-center gap-2"><i class="fa-solid fa-user-tie"></i> Ward Chief</button>
+                </div>
+                
+                <!-- Admin Lock -->
+                <button onclick="toggleAdminModal()" id="btnAdminToggle" class="glass-panel w-12 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition border border-white/5">
+                    <i class="fa-solid fa-lock"></i>
+                </button>
             </div>
         </header>
 
@@ -112,12 +125,28 @@
         <div id="dbGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 hidden pb-10"></div>
     </div>
 
-    <footer class="text-center py-6 text-slate-600 text-xs">System v3.8 • Developed for Rajavithi Hospital</footer>
+    <footer class="text-center py-6 text-slate-600 text-xs">System v4.0 • Developed for Rajavithi Hospital</footer>
+
+    <!-- ADMIN MODAL -->
+    <div id="adminModal" class="fixed inset-0 bg-slate-950/90 z-[100] hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-slate-900 p-6 rounded-2xl border border-slate-700 shadow-2xl w-80 text-center relative">
+            <button onclick="toggleAdminModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            <div class="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-xl text-white border border-slate-600"><i class="fa-solid fa-shield-halved"></i></div>
+            <h3 class="text-white font-bold mb-1">Admin Access</h3>
+            <p class="text-slate-400 text-xs mb-5">Enter Master Key to manage users.</p>
+            <input type="password" id="adminPin" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-3 text-center tracking-widest text-lg mb-4 text-white focus:border-blue-500 outline-none transition" placeholder="PIN">
+            <button onclick="checkAdmin()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg font-bold transition shadow-lg">Unlock Mode</button>
+        </div>
+    </div>
 
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbxZrOuiFqLzmaX9T7PN7xqwV-jvE80dBuNk4Gc3nV1K8-ZZw0YUEYDupPg_RKc1JUFB/exec";
         const APP_URL = "https://wasupon-sri.github.io/wardmatrix/app.html"; 
-        let currentRole = 'resident'; let allUsers = [];
+        
+        let currentRole = 'resident'; 
+        let allUsers = [];
+        let isAdmin = false;
+        let globalAdminKey = "";
 
         window.onload = loadDatabases;
 
@@ -143,14 +172,62 @@
             if (isChiefAuth) {
                 fields.classList.remove('hidden');
                 hint.innerHTML = "<span class='text-orange-400'><i class='fa-solid fa-shield-halved'></i> Creating using Chief privileges</span>";
-                // Disable Chief Creation option if Chief Auth is active
                 radioChief.disabled = true;
-                // Force switch to Resident
                 document.querySelector('input[name="newRole"][value="resident"]').checked = true;
             } else {
                 fields.classList.add('hidden');
                 hint.innerText = "* System will prompt for Master Key on submit";
                 radioChief.disabled = false;
+            }
+        }
+
+        function toggleAdminModal() {
+            if (isAdmin) {
+                // Logout
+                isAdmin = false;
+                globalAdminKey = "";
+                document.body.classList.remove('admin-mode');
+                document.getElementById('btnAdminToggle').innerHTML = '<i class="fa-solid fa-lock"></i>';
+                document.getElementById('btnAdminToggle').className = "glass-panel w-12 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition border border-white/5";
+                renderGrid();
+            } else {
+                const modal = document.getElementById('adminModal');
+                modal.classList.toggle('hidden');
+                modal.classList.toggle('flex');
+                if(!modal.classList.contains('hidden')) document.getElementById('adminPin').focus();
+            }
+        }
+
+        async function checkAdmin() {
+            const pin = document.getElementById('adminPin').value.trim();
+            const btn = event.target;
+            btn.innerText = "Checking...";
+            
+            // Verify via Backend to be safe
+            try {
+                const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'auth_verify', password: pin}) });
+                const json = await res.json();
+                
+                if (json.status === 'success' && json.role === 'admin') {
+                    isAdmin = true;
+                    globalAdminKey = pin;
+                    document.getElementById('adminModal').classList.add('hidden');
+                    document.getElementById('adminModal').classList.remove('flex');
+                    document.body.classList.add('admin-mode');
+                    
+                    // Change Lock Icon to Unlock
+                    const toggleBtn = document.getElementById('btnAdminToggle');
+                    toggleBtn.innerHTML = '<i class="fa-solid fa-lock-open"></i>';
+                    toggleBtn.className = "glass-panel w-12 rounded-xl flex items-center justify-center text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 transition shadow-glow";
+                    
+                    renderGrid();
+                } else {
+                    alert("Invalid Master Key");
+                }
+            } catch(e) { alert("Verification Failed"); }
+            finally { 
+                btn.innerText = "Unlock Mode"; 
+                document.getElementById('adminPin').value = "";
             }
         }
 
@@ -172,9 +249,17 @@
                 const isChief = u.role === 'chief'; const initial = u.name.charAt(0).toUpperCase(); const icon = isChief ? 'fa-user-tie' : 'fa-user-doctor';
                 return `<div onclick="enterApp('${u.name}', '${u.role}')" class="user-card cursor-pointer bg-surface-800/50 border border-slate-700/50 p-6 rounded-2xl transition group relative overflow-hidden backdrop-blur-sm">
                     <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition"><i class="fa-solid ${icon} text-6xl text-white"></i></div>
+                    
+                    <!-- DELETE BUTTON (Only visible in Admin Mode) -->
+                    <button onclick="deleteUser('${u.name}'); event.stopPropagation();" class="admin-element hidden absolute top-4 right-4 w-8 h-8 rounded-lg bg-rose-500/20 text-rose-500 hover:bg-rose-500 hover:text-white items-center justify-center z-20 border border-rose-500/30 transition">
+                        <i class="fa-solid fa-trash text-xs"></i>
+                    </button>
+
                     <div class="flex items-center gap-4 mb-4 relative z-10"><div class="w-12 h-12 rounded-full bg-slate-700/50 ${isChief?'text-orange-400':'text-blue-400'} flex items-center justify-center font-bold text-xl border border-slate-600 group-hover:bg-${isChief?'orange':'blue'}-500 group-hover:text-white transition shadow-inner">${initial}</div><div><h3 class="font-bold text-lg text-white truncate w-32 leading-tight">${u.name}</h3><p class="text-xs text-slate-400 transition uppercase font-bold tracking-wide">${u.role}</p></div></div>
                     <div class="flex items-center justify-between mt-2 pt-4 border-t border-slate-700/50"><span class="text-xs font-mono text-slate-500">Access</span><i class="fa-solid fa-arrow-right text-slate-600 transition transform group-hover:translate-x-1"></i></div></div>`;
             }).join('');
+            
+            if(isAdmin) document.body.classList.add('admin-mode');
         }
 
         function enterApp(dbName, role) { window.location.href = `${APP_URL}?db=${dbName}&role=${role}`; }
@@ -195,9 +280,14 @@
                 payload.creatorDB = creator;
                 payload.creatorPwd = pwd;
             } else {
-                const key = prompt("SECURITY CHECK\nPlease enter the Master Key to create a new database:"); 
-                if(!key) return;
-                payload.adminKey = key;
+                // If Global Admin is active, skip prompt
+                if (isAdmin && globalAdminKey) {
+                    payload.adminKey = globalAdminKey;
+                } else {
+                    const key = prompt("SECURITY CHECK\nPlease enter the Master Key to create a new database:"); 
+                    if(!key) return;
+                    payload.adminKey = key;
+                }
             }
 
             const btn = event.target; const originalText = btn.innerHTML; btn.innerHTML = "<i class='fa-solid fa-circle-notch fa-spin'></i> Creating..."; btn.disabled = true;
@@ -210,6 +300,19 @@
                     toggleCreate(); loadDatabases(); 
                 } else { alert(json.error || "Creation failed"); }
             } catch(e) { alert("Network error"); } finally { btn.innerHTML = originalText; btn.disabled = false; }
+        }
+
+        async function deleteUser(name) {
+            if(!confirm(`PERMANENTLY DELETE user "${name}"?\nAll data in this ward will be lost.`)) return;
+            
+            // Use global key since we are in admin mode
+            const payload = { action: 'admin_delete_user', dbName: name, adminKey: globalAdminKey };
+            
+            try {
+                const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+                const json = await res.json();
+                if(json.status === 'success') { loadDatabases(); } else { alert(json.error); }
+            } catch(e) { alert("Network Error"); }
         }
     </script>
 </body>
