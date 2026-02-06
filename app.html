@@ -356,26 +356,51 @@
         }
 
         async function deleteBatch() { 
-            if(!confirm(`Delete ${selectedIds.size} items?`)) return;
+            if(!confirm(`Delete ${selectedIds.size} items?`)) return; 
             
             // FIX: Stop automation to prevent stale data fetch during deletion
             clearInterval(refreshTimer);
             clearInterval(autoSaveTimer);
 
-            // Optimistic UI update
-            records = records.filter(r => !selectedIds.has(r.id)); 
-            renderView(); // Updates whatever view is active (Grid/Matrix)
-            
-            // Send to backend
-            const ids = Array.from(selectedIds);
-            toggleSelectMode(); // Exit select mode
-            
+            // Group by Owner
+            const batches = {};
+            const localDeleteIds = new Set();
+
+            selectedIds.forEach(id => {
+                const r = records.find(x => x.id === id);
+                if (r) {
+                    const target = (ROLE === 'chief' && r.owner) ? r.owner : DB_NAME;
+                    if (!batches[target]) batches[target] = [];
+                    batches[target].push(id);
+                    localDeleteIds.add(id);
+                }
+            });
+
+            // Optimistic Update
+            records = records.filter(r => !localDeleteIds.has(r.id));
+            renderView(); 
+            toggleSelectMode();
+
+            // Execute Requests Parallelly
+            const requests = Object.entries(batches).map(([targetDb, ids]) => {
+                return fetch(API_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify({
+                        action: 'delete', 
+                        db: targetDb, 
+                        requester: DB_NAME, // Identify who is deleting
+                        password: PASSWORD, 
+                        ids: ids
+                    }) 
+                });
+            });
+
             try {
-                await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: DB_NAME, password: PASSWORD, ids: ids}) });
+                await Promise.all(requests);
+                showToast("Batch delete complete", true);
             } catch(e) {
-                alert("Batch delete failed. Data may reappear on refresh.");
+                alert("Some items failed to delete.");
             } finally {
-                // Restart automation (will fetch fresh data)
                 startAutomation();
             }
         }
