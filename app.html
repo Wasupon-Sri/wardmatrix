@@ -153,7 +153,8 @@
                         <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"><i class="fa-solid fa-file-medical mr-2"></i>Clinical Notes</label>
                         <button onclick="toggleFullScreen()" class="text-medical-600 text-xs font-bold flex items-center gap-1 hover:text-medical-700"><i class="fa-solid fa-expand"></i> Fullscreen</button>
                     </div>
-                    <textarea id="editDetailsDesktop" oninput="syncDetails(this)" class="flex-1 w-full bg-transparent p-6 text-slate-700 leading-relaxed outline-none resize-none font-sans text-base focus:bg-white transition" placeholder="• Chief Complaint&#10;• HPI&#10;• Physical Exam&#10;• Assessment & Plan..."></textarea>
+                    <!-- Added ondblclick here -->
+                    <textarea id="editDetailsDesktop" ondblclick="toggleFullScreen()" oninput="syncDetails(this)" class="flex-1 w-full bg-transparent p-6 text-slate-700 leading-relaxed outline-none resize-none font-sans text-base focus:bg-white transition" placeholder="• Chief Complaint&#10;• HPI&#10;• Physical Exam&#10;• Assessment & Plan..."></textarea>
                 </div>
 
                 <!-- RIGHT PANEL: Metadata & Inputs -->
@@ -200,9 +201,17 @@
         </div>
     </div>
 
-    <!-- Fullscreen Overlay -->
-    <textarea id="fullscreenEditor" class="hidden fs-mode focus:outline-none" placeholder="Medical Details..."></textarea>
-    <button id="exitFsBtn" onclick="toggleFullScreen()" class="hidden fixed top-6 right-6 z-[10000] bg-slate-900 text-white px-6 py-3 rounded-full text-sm font-bold shadow-2xl hover:scale-105 transition flex items-center gap-2"><i class="fa-solid fa-compress"></i> Exit Fullscreen</button>
+    <!-- Fullscreen Overlay with Save Button -->
+    <div id="fullscreenOverlay" class="hidden fs-mode">
+        <div class="relative w-full h-full max-w-4xl mx-auto flex flex-col">
+            <textarea id="fullscreenEditor" class="w-full h-full bg-white text-slate-800 text-lg leading-relaxed outline-none resize-none p-4" placeholder="Medical Details..."></textarea>
+            
+            <div class="absolute top-4 right-4 flex gap-2">
+                <button onclick="saveRecord()" class="bg-emerald-600 text-white px-6 py-3 rounded-full text-sm font-bold shadow-lg hover:bg-emerald-700 transition flex items-center gap-2"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+                <button onclick="toggleFullScreen()" class="bg-slate-800 text-white px-6 py-3 rounded-full text-sm font-bold shadow-lg hover:bg-slate-900 transition flex items-center gap-2"><i class="fa-solid fa-compress"></i> Exit Fullscreen</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Ward Modal -->
     <div id="wardModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
@@ -469,7 +478,13 @@
                 if(idx > -1) records[idx] = clean; else records.push(clean);
                 if(!silent) renderView();
             }
-            if(!silent) closeEditor();
+            
+            // NOTE: Do not close editor on save in fullscreen to allow continuous work
+            if(!silent && !document.getElementById('fullscreenOverlay').classList.contains('hidden')) {
+               // Stay open
+            } else if (!silent) {
+               closeEditor();
+            }
             
             await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
             if(ROLE === 'chief') fetchData(true);
@@ -489,25 +504,18 @@
         function toggleDischarge() { currentDischarged = !currentDischarged; const btn = document.getElementById('btnDischarge'); btn.innerText = currentDischarged ? "Discharged" : "Archive"; btn.className = currentDischarged ? "px-4 py-2 bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition" : "px-4 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold transition hover:bg-slate-200"; }
         
         function toggleFullScreen() { 
-            const fsEl = document.getElementById('fullscreenEditor');
-            const exitBtn = document.getElementById('exitFsBtn');
-            const isHidden = fsEl.classList.contains('hidden');
+            const fsEl = document.getElementById('fullscreenOverlay');
+            // Toggle visibility
+            fsEl.classList.toggle('hidden');
             
-            if(isHidden) {
-                fsEl.classList.remove('hidden');
-                exitBtn.classList.remove('hidden');
-                // Sync current value to fullscreen
-                fsEl.value = document.getElementById('editDetailsDesktop').value;
-                fsEl.focus();
-            } else {
-                fsEl.classList.add('hidden');
-                exitBtn.classList.add('hidden');
-                // Sync back
-                syncDetails(fsEl);
+            if(!fsEl.classList.contains('hidden')) {
+                // Entering fullscreen: focus and set cursor
+                const editor = document.getElementById('fullscreenEditor');
+                editor.focus();
             }
         }
         
-        // Listen for sync on fullscreen too
+        // Sync logic is already handled by the oninput event listeners attached in HTML
         document.getElementById('fullscreenEditor').addEventListener('input', function() { syncDetails(this); });
     </script>
 </body>
