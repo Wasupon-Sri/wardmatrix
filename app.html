@@ -25,46 +25,65 @@
     <style>
         body { background-color: #f1f5f9; color: #334155; -webkit-tap-highlight-color: transparent; }
         .glass-header { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid #e2e8f0; }
-        .bed-card { background: white; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: var(--theme-shadow-card); transition: all 0.2s; min-height: 120px; display: flex; flex-direction: column; position: relative; overflow: hidden; }
-        .bed-card:hover { border-color: #cbd5e1; transform: translateY(-1px); }
-        .bed-card.vacant { background: #f8fafc; border-style: dashed; justify-content: center; align-items: center; opacity: 0.6; }
+        
+        .bed-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: var(--theme-shadow-card); transition: all 0.2s; min-height: 140px; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+        .bed-card:hover { border-color: #cbd5e1; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        
+        .bed-card.vacant { background: #f8fafc; border-style: dashed; justify-content: center; align-items: center; opacity: 0.6; min-height: 100px; }
         .bed-card.vacant:hover { opacity: 1; border-color: #0ea5e9; background: #f0f9ff; cursor: pointer; }
         
-        .fs-mode { position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 9999 !important; width: 100vw !important; height: 100vh !important; padding: 40px !important; font-size: 16pt !important; line-height: 1.5 !important; border-radius: 0 !important; }
+        /* A4 Paper Fullscreen */
+        .fs-mode { 
+            position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 9999 !important; 
+            width: 100vw !important; height: 100vh !important; 
+            background-color: #ffffff !important; 
+            color: #1e293b !important;
+            padding: 60px max(20px, calc(50vw - 400px)) !important; /* Center visually like A4 */
+            font-size: 16pt !important; line-height: 1.6 !important; 
+            border: none !important; border-radius: 0 !important; 
+            overflow-y: auto !important;
+        }
         
-        .consult-chip { padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; border: 1px solid transparent; }
+        .consult-chip { padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; border: 1px solid transparent; transition: all 0.2s; }
+        .consult-chip:hover { transform: scale(1.05); }
         .consult-chip.active { background-color: #e0f2fe; color: #0284c7; border-color: #bae6fd; }
+        .consult-chip.inactive { background-color: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; opacity: 0.7; }
         
-        .color-dot { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: transform 0.2s; }
-        .color-dot.selected { border-color: #334155; transform: scale(1.1); }
+        .color-dot { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: transform 0.2s; }
+        .color-dot:hover { transform: scale(1.2); }
+        .color-dot.selected { border-color: #334155; transform: scale(1.1); box-shadow: 0 0 0 2px #cbd5e1; }
+        
+        .matrix-col { min-width: 250px; background: #f8fafc; border-radius: 12px; padding: 12px; border: 1px solid #e2e8f0; }
         
         /* Grid Layouts */
-        .grid-1x36 { grid-template-columns: repeat(1, 1fr); }
-        .grid-2x18 { grid-template-columns: repeat(2, 1fr); }
-        .grid-3x12 { grid-template-columns: repeat(3, 1fr); }
-        .grid-4x9 { grid-template-columns: repeat(4, 1fr); }
-        .grid-5x7 { grid-template-columns: repeat(5, 1fr); }
-        .grid-6x6 { grid-template-columns: repeat(6, 1fr); }
+        .grid-1 { grid-template-columns: repeat(1, 1fr); }
+        .grid-2 { grid-template-columns: repeat(2, 1fr); }
+        .grid-3 { grid-template-columns: repeat(3, 1fr); }
+        .grid-4 { grid-template-columns: repeat(4, 1fr); }
+        .grid-5 { grid-template-columns: repeat(5, 1fr); }
+        .grid-6 { grid-template-columns: repeat(6, 1fr); }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="h-screen flex flex-col overflow-hidden text-sm">
 
     <!-- AUTH OVERLAY -->
     <div id="authOverlay" class="fixed inset-0 z-50 bg-slate-50 flex items-center justify-center p-6">
-        <div class="w-full max-w-sm text-center bg-white p-8 rounded-2xl shadow-float">
-            <div class="w-16 h-16 bg-medical-500 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-3xl shadow-lg shadow-medical-500/30">
-                <i class="fa-solid fa-hospital"></i>
+        <div class="w-full max-w-sm text-center bg-white p-8 rounded-2xl shadow-float border border-slate-100">
+            <div class="w-16 h-16 bg-medical-600 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-3xl shadow-lg shadow-medical-500/30">
+                <i class="fa-solid fa-hospital-user"></i>
             </div>
             <h1 class="text-xl font-bold text-slate-800" id="authTitle">Ward Manager</h1>
-            <p class="text-slate-500 text-sm mb-6" id="authSub">Accessing: <span id="loginDbName" class="font-bold text-medical-600">...</span></p>
+            <p class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-6" id="authSub">Accessing: <span id="loginDbName" class="text-medical-600">...</span></p>
             
             <div id="authForm" class="hidden space-y-3">
                 <input type="password" id="loginPin" placeholder="Enter Password" class="w-full p-3 text-center text-lg font-bold rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:border-medical-500 focus:bg-white transition">
                 <button onclick="verifyPassword()" id="btnLogin" class="w-full py-3 bg-slate-800 text-white font-bold rounded-xl shadow-lg active:scale-95 transition">Login</button>
             </div>
             <div id="setupForm" class="hidden space-y-3">
-                <div class="bg-orange-50 text-orange-600 p-2 rounded-lg text-xs font-bold mb-2">New Database - Setup Access</div>
-                <input type="password" id="setupPin" placeholder="Create New Password" class="w-full p-3 text-center text-lg font-bold rounded-xl border border-slate-200 bg-white">
+                <div class="bg-orange-50 text-orange-600 p-3 rounded-xl text-xs font-bold mb-2 border border-orange-100">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> New Database Detected
+                </div>
+                <input type="password" id="setupPin" placeholder="Create Password" class="w-full p-3 text-center text-lg font-bold rounded-xl border border-slate-200 bg-white">
                 <button onclick="setupPassword()" class="w-full py-3 bg-medical-600 text-white font-bold rounded-xl shadow-lg">Set Password</button>
             </div>
             <div id="loadingState" class="mt-4"><i class="fa-solid fa-circle-notch fa-spin text-medical-500 text-2xl"></i></div>
@@ -77,50 +96,60 @@
         <!-- Header -->
         <header class="glass-header h-16 flex items-center justify-between px-4 shrink-0 z-20">
             <div class="flex items-center gap-3">
-                <div onclick="toggleGridMenu()" class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-600 flex items-center justify-center shadow-sm cursor-pointer hover:bg-slate-50">
+                <button onclick="toggleGridMenu()" class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-600 flex items-center justify-center shadow-sm hover:bg-slate-50 hover:text-medical-600 transition" title="Grid Settings">
                     <i class="fa-solid fa-table-cells"></i>
-                </div>
-                <div>
-                    <h2 class="font-bold text-lg text-slate-800 leading-none" id="headerWard">General Ward</h2>
+                </button>
+                <div class="leading-tight">
+                    <h2 class="font-bold text-lg text-slate-800" id="headerWard">General Ward</h2>
                     <span id="roleBadge" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Resident View</span>
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                 <button onclick="changeWard()" class="bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2">
-                    <i class="fa-solid fa-layer-group"></i> <span class="hidden sm:inline">Change Ward</span>
+                 <div class="bg-slate-200/50 p-1 rounded-lg flex text-xs font-bold text-slate-500 mr-2">
+                     <button onclick="switchView('grid')" id="viewBtnGrid" class="px-3 py-1.5 rounded-md bg-white shadow-sm text-medical-700 transition">Grid</button>
+                     <button onclick="switchView('matrix')" id="viewBtnMatrix" class="px-3 py-1.5 rounded-md hover:bg-white/50 transition">Consults</button>
+                 </div>
+                 <button onclick="changeWard()" class="bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold shadow-sm flex items-center gap-2 hover:bg-slate-50">
+                    <i class="fa-solid fa-right-left"></i> <span class="hidden sm:inline">Change Ward</span>
                  </button>
-                 <button onclick="exportData()" class="w-10 h-10 rounded-lg bg-white border border-slate-200 text-slate-500 flex items-center justify-center hover:text-medical-600"><i class="fa-solid fa-file-export"></i></button>
-                 <button onclick="fetchData()" id="btnRefresh" class="w-10 h-10 rounded-lg bg-slate-800 text-white flex items-center justify-center shadow-md"><i class="fa-solid fa-rotate"></i></button>
+                 <button onclick="exportData()" class="w-10 h-10 rounded-lg bg-white border border-slate-200 text-slate-500 flex items-center justify-center hover:text-medical-600 shadow-sm" title="Export .txt"><i class="fa-solid fa-file-export"></i></button>
+                 <button onclick="fetchData()" id="btnRefresh" class="w-10 h-10 rounded-lg bg-slate-800 text-white flex items-center justify-center shadow-md hover:bg-slate-700"><i class="fa-solid fa-rotate"></i></button>
             </div>
         </header>
 
         <!-- Grid Settings Dropdown -->
         <div id="gridMenu" class="hidden absolute top-16 left-4 z-40 bg-white rounded-xl shadow-xl border border-slate-100 p-4 w-64 animate-fade-in">
-            <h4 class="text-xs font-bold text-slate-400 uppercase mb-3">Grid Layout (Vertical)</h4>
-            <div class="grid grid-cols-3 gap-2">
-                <button onclick="setGrid(1)" class="p-2 border rounded hover:bg-slate-50 text-xs font-bold">1 x 36</button>
-                <button onclick="setGrid(2)" class="p-2 border rounded hover:bg-slate-50 text-xs font-bold">2 x 18</button>
-                <button onclick="setGrid(3)" class="p-2 border rounded hover:bg-slate-50 text-xs font-bold">3 x 12</button>
-                <button onclick="setGrid(4)" class="p-2 border rounded hover:bg-slate-50 text-xs font-bold">4 x 9</button>
-                <button onclick="setGrid(5)" class="p-2 border rounded hover:bg-slate-50 text-xs font-bold">5 x 7</button>
-                <button onclick="setGrid(6)" class="p-2 border rounded hover:bg-slate-50 text-xs font-bold">6 x 6</button>
+            <h4 class="text-[10px] font-bold text-slate-400 uppercase mb-3">Grid Layout (Columns)</h4>
+            <div class="grid grid-cols-3 gap-2 mb-3">
+                <button onclick="setGrid(1)" class="p-2 border rounded hover:bg-slate-50 text-xs font-bold">1 Col</button>
+                <button onclick="setGrid(2)" class="p-2 border rounded hover:bg-slate-50 text-xs font-bold">2 Cols</button>
+                <button onclick="setGrid(3)" class="p-2 border rounded hover:bg-slate-50 text-xs font-bold">3 Cols</button>
+                <button onclick="setGrid(4)" class="p-2 border rounded hover:bg-slate-50 text-xs font-bold">4 Cols</button>
+                <button onclick="setGrid(5)" class="p-2 border rounded hover:bg-slate-50 text-xs font-bold">5 Cols</button>
+                <button onclick="setGrid(6)" class="p-2 border rounded hover:bg-slate-50 text-xs font-bold">6 Cols</button>
             </div>
-            <div class="mt-3 pt-3 border-t">
-                <label class="flex items-center gap-2 text-xs font-bold text-slate-600">
-                    <input type="checkbox" id="checkHorizontal" onchange="toggleOrientation()" class="accent-medical-600"> Horizontal Flow
-                </label>
+            <h4 class="text-[10px] font-bold text-slate-400 uppercase mb-2">Total Beds</h4>
+            <div class="flex items-center gap-2">
+                <input type="range" min="10" max="100" step="1" id="bedCountSlider" oninput="updateBedCount(this.value)" class="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600">
+                <span id="bedCountLabel" class="text-xs font-bold w-8 text-center">36</span>
             </div>
         </div>
 
-        <!-- Bed Grid -->
-        <main class="flex-1 overflow-y-auto p-4 md:p-6" id="mainScroll">
-            <div id="bedGrid" class="grid gap-3 pb-20 transition-all duration-300">
-                <!-- Beds Injected Here -->
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-6 relative" id="mainScroll">
+            <!-- 1. BED GRID VIEW -->
+            <div id="viewGrid" class="block">
+                <div id="bedGrid" class="grid gap-3 pb-20 transition-all duration-300"></div>
+            </div>
+            
+            <!-- 2. CONSULTATION MATRIX VIEW -->
+            <div id="viewMatrix" class="hidden pb-20">
+                <div id="matrixContainer" class="flex gap-4 overflow-x-auto pb-6 snap-x"></div>
             </div>
         </main>
 
         <!-- FAB -->
-        <button onclick="openEditor(null)" class="fixed bottom-6 right-6 w-14 h-14 bg-slate-800 text-white rounded-full shadow-2xl flex items-center justify-center z-30 hover:scale-105 transition">
+        <button onclick="openEditor(null)" class="fixed bottom-6 right-6 w-14 h-14 bg-slate-800 text-white rounded-full shadow-2xl flex items-center justify-center z-30 hover:scale-105 transition hover:bg-medical-600">
             <i class="fa-solid fa-plus text-xl"></i>
         </button>
 
@@ -129,16 +158,19 @@
     <!-- EDITOR MODAL -->
     <div id="editorModal" class="fixed inset-0 z-50 hidden">
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeEditor()"></div>
-        <div class="absolute inset-x-0 bottom-0 top-12 md:top-20 md:inset-x-auto md:right-0 md:w-[600px] bg-white rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none flex flex-col shadow-2xl animate-slide-up">
+        <div class="absolute inset-x-0 bottom-0 top-12 md:top-10 md:inset-x-auto md:right-0 md:w-[650px] bg-white rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none flex flex-col shadow-2xl animate-slide-up">
             
             <!-- Header -->
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white z-10 rounded-t-2xl">
-                <div>
-                    <h3 class="text-xl font-bold text-slate-800" id="editorTitle">Patient Details</h3>
-                    <div id="editorBedBadge" class="inline-block bg-medical-50 text-medical-700 text-xs font-bold px-2 py-0.5 rounded mt-1">Bed #</div>
+                <div class="flex items-center gap-3">
+                    <div id="editorBedBadge" class="bg-slate-800 text-white text-xl font-bold px-3 py-1 rounded-lg">#01</div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800 leading-none" id="editorTitle">New Patient</h3>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase mt-0.5">Admit Details</p>
+                    </div>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="toggleDischarge()" id="btnDischarge" class="px-3 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold transition hover:bg-slate-200">
+                    <button onclick="toggleDischarge()" id="btnDischarge" class="px-4 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold transition hover:bg-slate-200">
                         Archive
                     </button>
                     <button onclick="closeEditor()" class="w-9 h-9 rounded-full bg-slate-50 text-slate-400 hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -149,27 +181,27 @@
             <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-white">
                 
                 <!-- Identification -->
-                <div class="flex gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <div class="flex gap-4 p-5 bg-slate-50 rounded-2xl border border-slate-100">
                     <div class="w-24 space-y-1">
                         <label class="text-[10px] font-bold text-slate-400 uppercase">Bed No.</label>
-                        <select id="editBed" class="w-full bg-white border border-slate-200 rounded-lg p-2 font-bold text-center text-lg outline-none focus:border-medical-500">
+                        <select id="editBed" onchange="document.getElementById('editorBedBadge').innerText='#'+this.value" class="w-full bg-white border border-slate-200 rounded-lg p-2.5 font-bold text-center text-lg outline-none focus:border-medical-500 shadow-sm">
                             <!-- JS Populated -->
                         </select>
                     </div>
                     <div class="flex-1 space-y-1">
                         <label class="text-[10px] font-bold text-slate-400 uppercase">Name (Auto-fill if empty)</label>
-                        <input type="text" id="editName" class="w-full bg-white border border-slate-200 rounded-lg p-2 font-bold text-lg outline-none focus:border-medical-500 placeholder:font-normal placeholder:text-slate-300" placeholder="Patient Name">
+                        <input type="text" id="editName" class="w-full bg-white border border-slate-200 rounded-lg p-2.5 font-bold text-lg outline-none focus:border-medical-500 placeholder:font-normal placeholder:text-slate-300 shadow-sm" placeholder="e.g. Somchai Jai-dee">
                     </div>
                 </div>
 
                 <div class="space-y-1 px-1">
                      <label class="text-[10px] font-bold text-slate-400 uppercase">HN (Optional)</label>
-                     <input type="text" id="editHN" class="w-full bg-slate-50 border-b border-slate-200 p-2 font-mono text-sm outline-none focus:border-medical-500 focus:bg-white transition" placeholder="HN 12345">
+                     <input type="text" id="editHN" class="w-full bg-transparent border-b border-slate-200 p-2 font-mono text-sm outline-none focus:border-medical-500 transition" placeholder="HN 1234567">
                 </div>
 
                 <!-- Color Coding -->
                 <div class="space-y-2">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase px-1">Card Color</label>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase px-1">Patient Status Tag</label>
                     <div id="colorContainer" class="flex flex-wrap gap-2 px-1"></div>
                 </div>
 
@@ -177,20 +209,24 @@
                 <div class="space-y-2">
                     <label class="text-[10px] font-bold text-slate-400 uppercase px-1">Consultation Units</label>
                     <div id="consultContainer" class="flex flex-wrap gap-2 px-1 mb-2"></div>
-                    <div class="flex gap-2 px-1">
-                        <input type="text" id="customConsult" placeholder="Add Other..." class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none">
-                        <button onclick="addCustomConsult()" class="bg-slate-200 text-slate-600 px-3 rounded-lg text-xs font-bold hover:bg-slate-300">+</button>
+                    <div class="flex gap-2 px-1 items-center">
+                        <input type="text" id="customConsult" placeholder="Add Other (e.g. Psych)" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-medical-500 w-40">
+                        <button onclick="addCustomConsult()" class="bg-slate-800 text-white w-8 h-8 rounded-lg text-xs font-bold hover:bg-slate-700"><i class="fa-solid fa-plus"></i></button>
                     </div>
                 </div>
 
                 <!-- Details (Double Click Fullscreen) -->
-                <div class="space-y-2 group">
+                <div class="space-y-2 group relative">
                     <label class="text-[10px] font-bold text-slate-400 uppercase px-1 flex justify-between">
                         <span>Medical Details</span>
-                        <span class="text-medical-500 cursor-pointer opacity-0 group-hover:opacity-100 transition" onclick="toggleFullScreen()"><i class="fa-solid fa-expand mr-1"></i>Fullscreen</span>
+                        <span class="text-medical-500 cursor-pointer opacity-0 group-hover:opacity-100 transition" onclick="toggleFullScreen()"><i class="fa-solid fa-expand mr-1"></i>Fullscreen (A4)</span>
                     </label>
-                    <textarea id="editDetails" ondblclick="toggleFullScreen()" class="w-full bg-yellow-50/50 border border-yellow-100 rounded-xl p-4 text-slate-700 leading-relaxed outline-none focus:ring-2 focus:ring-yellow-200 transition resize-none min-h-[150px] font-sans" placeholder="Diagnosis, Active Issues, Plan..."></textarea>
-                    <button id="exitFsBtn" onclick="toggleFullScreen()" class="hidden fixed top-6 right-6 z-[10000] bg-black/80 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg hover:bg-black">Exit Fullscreen</button>
+                    <textarea id="editDetails" ondblclick="toggleFullScreen()" class="w-full bg-yellow-50/30 border border-yellow-200/50 rounded-xl p-4 text-slate-700 leading-relaxed outline-none focus:ring-2 focus:ring-yellow-200/50 transition resize-none min-h-[180px] font-sans" placeholder="• Active Issues&#10;• Plan&#10;• Pending Results..."></textarea>
+                    
+                    <!-- Floating Fullscreen Exit Button -->
+                    <button id="exitFsBtn" onclick="toggleFullScreen()" class="hidden fixed top-6 right-6 z-[10000] bg-slate-900 text-white px-6 py-3 rounded-full text-sm font-bold shadow-2xl hover:scale-105 transition flex items-center gap-2">
+                        <i class="fa-solid fa-compress"></i> Exit A4 Mode
+                    </button>
                 </div>
 
                 <!-- Todo -->
@@ -203,7 +239,7 @@
                 </div>
 
                 <div class="pt-4">
-                     <button onclick="deleteRecord()" id="btnDelete" class="w-full text-rose-400 text-xs font-bold py-3 hover:text-rose-600 transition">Delete Permanently</button>
+                     <button onclick="deleteRecord()" id="btnDelete" class="w-full text-rose-400 text-xs font-bold py-3 hover:text-rose-600 transition flex items-center justify-center gap-2"><i class="fa-regular fa-trash-can"></i> Delete Permanently</button>
                 </div>
             </div>
 
@@ -232,20 +268,19 @@
     <script>
         // CONFIG
         const API_URL = "https://script.google.com/macros/s/AKfycbxZrOuiFqLzmaX9T7PN7xqwV-jvE80dBuNk4Gc3nV1K8-ZZw0YUEYDupPg_RKc1JUFB/exec";
-        const MASTER_KEY = "14159265";
-
+        
         const STANDARD_UNITS = [
-            {id: 'Cardio', icon: 'fa-heart-pulse', color: 'text-rose-500'}, 
-            {id: 'Chest', icon: 'fa-lungs', color: 'text-cyan-500'}, 
-            {id: 'GI', icon: 'fa-burger', color: 'text-orange-500'},
-            {id: 'Neuro', icon: 'fa-brain', color: 'text-pink-500'},
-            {id: 'Nephro', icon: 'fa-kidney', color: 'text-yellow-600'}, 
-            {id: 'ID', icon: 'fa-virus', color: 'text-green-500'}, 
-            {id: 'Hemato', icon: 'fa-droplet', color: 'text-red-600'}, 
-            {id: 'Onco', icon: 'fa-radiation', color: 'text-purple-500'}
+            {id: 'Cardio', icon: 'fa-heart-pulse'}, {id: 'Chest', icon: 'fa-lungs'}, {id: 'GI', icon: 'fa-burger'},
+            {id: 'Neuro', icon: 'fa-brain'}, {id: 'Nephro', icon: 'fa-kidney'}, {id: 'ID', icon: 'fa-virus'}, 
+            {id: 'Hemato', icon: 'fa-droplet'}, {id: 'Onco', icon: 'fa-radiation'}, {id: 'Endo', icon: 'fa-cube'},
+            {id: 'Rheumato', icon: 'fa-bone'}, {id: 'Skin', icon: 'fa-hand-dots'}
         ];
         
-        const COLORS = ['#ffffff', '#fecaca', '#fed7aa', '#fef08a', '#bbf7d0', '#99f6e4', '#bfdbfe', '#ddd6fe', '#fbcfe8', '#e2e8f0'];
+        const COLORS = [
+            '#ffffff', '#fecaca', '#fed7aa', '#fef08a', '#bbf7d0', '#99f6e4', '#bfdbfe', '#ddd6fe', '#fbcfe8', '#e2e8f0',
+            '#fca5a5', '#fdba74', '#fde047', '#86efac', '#5eead4', '#93c5fd', '#c4b5fd', '#f0abfc', '#cbd5e1', '#d1d5db',
+            '#f87171', '#fb923c', '#facc15', '#4ade80', '#2dd4bf', '#60a5fa', '#a78bfa', '#e879f9', '#94a3b8', '#9ca3af'
+        ];
 
         // STATE
         let DB_NAME = new URLSearchParams(window.location.search).get('db');
@@ -257,11 +292,9 @@
         let wards = new Set(["General Ward"]);
         
         let gridCols = 3; 
-        let gridRows = 12; // Default 3x12 (36)
-        let isHorizontal = false;
-
+        let totalBeds = 36;
         let editingId = null;
-        let activeConsults = []; // Array of objects {id, icon}
+        let activeConsults = []; 
         let currentTodos = [];
         let currentDischarged = false;
 
@@ -270,12 +303,18 @@
             if(!DB_NAME) return document.body.innerHTML = "<div class='p-10 text-center font-bold'>Error: No Database Selected</div>";
             
             document.getElementById('loginDbName').innerText = DB_NAME;
-            document.getElementById('roleBadge').innerText = ROLE === 'chief' ? "Chief View (Aggregated)" : "Resident View";
+            document.getElementById('roleBadge').innerText = ROLE === 'chief' ? "Ward Chief (Aggregated)" : "Ward Resident";
             if(ROLE === 'chief') document.getElementById('roleBadge').className = "text-[10px] font-bold text-orange-500 uppercase tracking-wider";
 
-            // Load Grid Settings
+            // Load Settings
             const savedGrid = localStorage.getItem('ward_grid_cols');
             if(savedGrid) gridCols = parseInt(savedGrid);
+            const savedBeds = localStorage.getItem('ward_total_beds');
+            if(savedBeds) {
+                totalBeds = parseInt(savedBeds);
+                document.getElementById('bedCountSlider').value = totalBeds;
+                document.getElementById('bedCountLabel').innerText = totalBeds;
+            }
             
             checkAuth();
             renderColorPicker();
@@ -283,14 +322,12 @@
 
         // AUTH
         async function checkAuth() {
-            // Check if Master Key is needed (Chief) or normal password
             try {
                 const res = await fetch(`${API_URL}?action=auth_check_status&db=${DB_NAME}`);
                 const json = await res.json();
                 document.getElementById('loadingState').classList.add('hidden');
                 
                 if (ROLE === 'chief') {
-                    // Chief Mode always asks for password (Master Key logic handled in verify)
                     document.getElementById('authTitle').innerText = "Chief Access";
                     document.getElementById('authForm').classList.remove('hidden');
                 } else {
@@ -303,27 +340,17 @@
         async function verifyPassword() {
             const p = document.getElementById('loginPin').value;
             const btn = document.getElementById('btnLogin'); btn.innerText = "...";
-            
             try {
-                // If Chief, we verify against Master Key via backend logic or specialized auth
                 const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'auth_verify', db: DB_NAME, password: p}) });
                 const json = await res.json();
-                
                 if (json.status === 'success') {
-                    if (ROLE === 'chief' && !json.isMaster) {
-                         alert("Chief Mode requires Master Key");
-                         btn.innerText = "Login";
-                         return;
-                    }
+                    if (ROLE === 'chief' && !json.isMaster) { alert("Chief Mode requires Master Key"); btn.innerText = "Login"; return; }
                     PASSWORD = p;
                     document.getElementById('authOverlay').classList.add('hidden');
                     document.getElementById('appContainer').classList.remove('hidden');
                     fetchData();
-                } else {
-                    alert("Incorrect Password");
-                }
-            } catch(e) { alert("Network Error"); } 
-            finally { btn.innerText = "Login"; }
+                } else { alert("Incorrect Password"); }
+            } catch(e) { alert("Network Error"); } finally { btn.innerText = "Login"; }
         }
 
         async function setupPassword() {
@@ -338,11 +365,8 @@
             const btn = document.getElementById('btnRefresh'); btn.classList.add('animate-spin');
             
             if (ROLE === 'chief') {
-                // Chief fetches ALL users then filters by Current Ward locally
                 const listRes = await fetch(`${API_URL}?action=admin_list_users`);
                 const listJson = await listRes.json();
-                
-                // Fetch all in parallel
                 const promises = listJson.users.map(u => 
                     fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'read', db: u, password: PASSWORD}) })
                     .then(r => r.json())
@@ -357,16 +381,10 @@
                 records = json.map(processRecord);
             }
 
-            // Extract Wards
             wards = new Set(["General Ward"]);
             records.forEach(r => { if(r.ward) wards.add(r.ward); });
             
-            // If current ward not in list, default to General
-            if(!wards.has(currentWard) && records.length > 0) {
-                 // Try to keep current if possible, else switch
-            }
-
-            renderGrid();
+            renderView();
             btn.classList.remove('animate-spin');
         }
 
@@ -374,58 +392,48 @@
             let c = [], t = [];
             try { c = JSON.parse(r.consult_units); } catch(e) {}
             try { t = JSON.parse(r.todo_list); } catch(e) {}
-            return { 
-                ...r, 
-                consult_units: Array.isArray(c) ? c : [], 
-                todo_list: Array.isArray(t) ? t : [],
-                is_discharged: r.is_discharged === true || r.is_discharged === "TRUE"
-            };
+            return { ...r, consult_units: Array.isArray(c) ? c : [], todo_list: Array.isArray(t) ? t : [], is_discharged: r.is_discharged === true || r.is_discharged === "TRUE" };
         }
 
-        // GRID SYSTEM
+        // VIEW CONTROLLER
+        function switchView(view) {
+            document.getElementById('viewGrid').classList.toggle('hidden', view !== 'grid');
+            document.getElementById('viewMatrix').classList.toggle('hidden', view !== 'matrix');
+            
+            document.getElementById('viewBtnGrid').className = view === 'grid' ? "px-3 py-1.5 rounded-md bg-white shadow-sm text-medical-700 transition" : "px-3 py-1.5 rounded-md hover:bg-white/50 transition";
+            document.getElementById('viewBtnMatrix').className = view === 'matrix' ? "px-3 py-1.5 rounded-md bg-white shadow-sm text-medical-700 transition" : "px-3 py-1.5 rounded-md hover:bg-white/50 transition";
+            
+            renderView();
+        }
+
+        function renderView() {
+            if(!document.getElementById('viewGrid').classList.contains('hidden')) renderGrid();
+            else renderMatrix();
+        }
+
+        // 1. GRID SYSTEM
         function toggleGridMenu() { document.getElementById('gridMenu').classList.toggle('hidden'); }
-        
-        function setGrid(cols) {
-            gridCols = cols;
-            localStorage.setItem('ward_grid_cols', cols);
-            renderGrid();
-            toggleGridMenu();
-        }
-
-        function toggleOrientation() {
-            isHorizontal = document.getElementById('checkHorizontal').checked;
-            renderGrid();
-        }
+        function setGrid(cols) { gridCols = cols; localStorage.setItem('ward_grid_cols', cols); renderGrid(); toggleGridMenu(); }
+        function updateBedCount(val) { totalBeds = parseInt(val); document.getElementById('bedCountLabel').innerText = val; localStorage.setItem('ward_total_beds', val); renderGrid(); }
 
         function renderGrid() {
             const grid = document.getElementById('bedGrid');
-            grid.style.gridTemplateColumns = `repeat(${gridCols}, 1fr)`;
+            grid.className = `grid gap-3 pb-20 grid-${gridCols}`; // Apply grid class
             grid.innerHTML = "";
             document.getElementById('headerWard').innerText = currentWard;
 
-            // Filter records for current ward & not discharged
             const activeRecords = records.filter(r => r.ward === currentWard && !r.is_discharged);
             
-            // Total Slots logic (Auto-expand based on max bed number found or min 36)
-            let maxBed = 36;
-            activeRecords.forEach(r => { if(parseInt(r.bed_number) > maxBed) maxBed = parseInt(r.bed_number); });
-            // Round up to row completion if needed
-            const totalSlots = Math.max(36, Math.ceil(maxBed / gridCols) * gridCols);
-
-            for(let i=1; i<=totalSlots; i++) {
-                // Find patients in this bed
-                // In Chief mode, there might be multiple (Conflict). Show all.
+            for(let i=1; i<=totalBeds; i++) {
                 const occupants = activeRecords.filter(r => parseInt(r.bed_number) === i);
                 
                 if (occupants.length === 0) {
-                    // Vacant Slot
                     grid.innerHTML += `
                     <div onclick="openEditor(null, ${i})" class="bed-card vacant group">
                         <span class="text-3xl font-bold text-slate-300 group-hover:text-medical-400">${i}</span>
                         <span class="text-[10px] font-bold text-slate-300 uppercase mt-1 group-hover:text-medical-500">Vacant</span>
                     </div>`;
                 } else {
-                    // Occupied
                     occupants.forEach(r => {
                         const bg = r.color_id || '#ffffff';
                         const consultChips = r.consult_units.slice(0, 3).map(c => {
@@ -433,36 +441,59 @@
                             return `<i class="fa-solid ${icon} text-[10px] text-slate-500"></i>`;
                         }).join(' ');
                         
-                        // Todo Status
-                        const done = r.todo_list.filter(t => t.done).length;
-                        const total = r.todo_list.length;
-                        const todoHtml = total > 0 ? `<div class="text-[10px] font-bold ${done===total?'text-green-500':'text-orange-500'} bg-slate-50 px-1.5 py-0.5 rounded ml-auto">${done}/${total}</div>` : '';
+                        const pendingTodos = r.todo_list.filter(t => !t.done);
+                        const todoHtml = pendingTodos.length > 0 
+                            ? `<div class="mt-2 text-[10px] bg-white/60 p-1.5 rounded border border-slate-100 truncate"><i class="fa-solid fa-circle-exclamation text-orange-400 mr-1"></i>${pendingTodos[0].text} ${pendingTodos.length>1 ? '+'+(pendingTodos.length-1) : ''}</div>` 
+                            : '';
 
-                        // Owner Badge (Chief)
-                        const ownerTag = (ROLE === 'chief' && r.owner) ? `<div class="absolute top-0 right-0 bg-slate-800 text-white text-[9px] px-2 py-0.5 rounded-bl-lg z-10 font-bold">${r.owner.substr(0,4)}</div>` : '';
+                        const ownerTag = (ROLE === 'chief' && r.owner) ? `<div class="absolute top-0 right-0 bg-slate-800 text-white text-[9px] px-2 py-0.5 rounded-bl-lg z-10 font-bold opacity-80">${r.owner.substr(0,4)}</div>` : '';
 
                         grid.innerHTML += `
-                        <div onclick="openEditor('${r.id}', ${i})" class="bed-card cursor-pointer group" style="background: linear-gradient(to bottom, ${bg} 0%, #ffffff 40%)">
+                        <div onclick="openEditor('${r.id}', ${i})" class="bed-card cursor-pointer group" style="background: linear-gradient(to bottom, ${bg} 0%, #ffffff 60%)">
                             ${ownerTag}
                             <div class="p-3 flex-1 flex flex-col relative">
                                 <div class="flex justify-between items-start mb-1">
                                     <span class="text-2xl font-bold text-slate-800">${i}</span>
                                     <div class="flex gap-1 pt-1">${consultChips}</div>
                                 </div>
-                                
                                 <div class="mt-1">
                                     <h4 class="font-bold text-sm text-slate-700 leading-tight truncate">${r.name || 'Unknown'}</h4>
                                     <p class="text-[10px] font-mono text-slate-400 mt-0.5">HN: ${r.hn || '-'}</p>
                                 </div>
-
-                                <div class="mt-auto pt-2 flex items-center border-t border-slate-50/50">
-                                    ${todoHtml}
-                                </div>
+                                ${todoHtml}
                             </div>
                         </div>`;
                     });
                 }
             }
+        }
+
+        // 2. CONSULTATION MATRIX
+        function renderMatrix() {
+            const container = document.getElementById('matrixContainer');
+            container.innerHTML = "";
+            const activeRecords = records.filter(r => r.ward === currentWard && !r.is_discharged);
+            
+            // Get all unique units active
+            const usedUnits = new Set();
+            activeRecords.forEach(r => r.consult_units.forEach(u => usedUnits.add(u.id)));
+            const sortedUnits = Array.from(usedUnits).sort();
+
+            if(sortedUnits.length === 0) { container.innerHTML = "<div class='p-10 text-slate-400 italic'>No active consultations.</div>"; return; }
+
+            sortedUnits.forEach(unit => {
+                const patients = activeRecords.filter(r => r.consult_units.some(u => u.id === unit));
+                let html = `<div class="matrix-col snap-center shrink-0"><h4 class="font-bold text-sm text-slate-700 uppercase mb-3 flex items-center gap-2"><i class="fa-solid fa-user-md text-medical-500"></i> ${unit} <span class="bg-slate-200 text-slate-600 px-1.5 rounded-md text-[10px]">${patients.length}</span></h4><div class="space-y-2">`;
+                
+                patients.forEach(r => {
+                    html += `<div onclick="openEditor('${r.id}')" class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:border-medical-400 cursor-pointer transition">
+                        <div class="flex justify-between"><span class="font-bold text-sm text-slate-800">Bed ${r.bed_number}</span><span class="text-[10px] text-slate-400">${r.hn || ''}</span></div>
+                        <div class="text-xs text-slate-600 truncate">${r.name}</div>
+                    </div>`;
+                });
+                html += `</div></div>`;
+                container.innerHTML += html;
+            });
         }
 
         // EDITOR
@@ -473,7 +504,6 @@
             activeConsults = [];
             currentDischarged = false;
             
-            // Populate Bed Select (Dynamic 1-100)
             const sel = document.getElementById('editBed');
             sel.innerHTML = "";
             for(let i=1; i<=100; i++) sel.innerHTML += `<option value="${i}">${i}</option>`;
@@ -482,30 +512,24 @@
                 const r = records.find(x => x.id === id);
                 document.getElementById('editorTitle').innerText = "Edit Patient";
                 document.getElementById('editBed').value = r.bed_number;
-                document.getElementById('editorBedBadge').innerText = `Bed #${r.bed_number}`;
+                document.getElementById('editorBedBadge').innerText = `#${r.bed_number}`;
                 document.getElementById('editHN').value = r.hn;
                 document.getElementById('editName').value = r.name;
                 document.getElementById('editDetails').value = r.details;
-                
                 activeConsults = r.consult_units ? JSON.parse(JSON.stringify(r.consult_units)) : [];
                 currentTodos = r.todo_list ? JSON.parse(JSON.stringify(r.todo_list)) : [];
-                
                 setActiveColor(r.color_id);
                 toggleElement('btnDelete', true);
             } else {
                 document.getElementById('editorTitle').innerText = "Admit Patient";
-                // Smart fill bed
                 document.getElementById('editBed').value = bedNum || 1;
-                document.getElementById('editorBedBadge').innerText = `Bed #${bedNum || 1}`;
-                
+                document.getElementById('editorBedBadge').innerText = `#${bedNum || 1}`;
                 document.getElementById('editHN').value = "";
                 document.getElementById('editName').value = "";
                 document.getElementById('editDetails').value = "";
-                
                 setActiveColor('#ffffff');
                 toggleElement('btnDelete', false);
             }
-
             renderConsults();
             renderTodos();
             updateDischargeBtn();
@@ -513,105 +537,64 @@
 
         function closeEditor() { toggleElement('editorModal', false); }
 
-        // CONSULTS
         function renderConsults() {
             const div = document.getElementById('consultContainer');
             div.innerHTML = "";
-            
-            // Merge Standard + Active Custom ones
             const allUnits = [...STANDARD_UNITS];
-            // Add custom ones from active list if not in standard
-            activeConsults.forEach(ac => {
-                if (!allUnits.find(u => u.id === ac.id)) allUnits.push(ac);
-            });
+            activeConsults.forEach(ac => { if (!allUnits.find(u => u.id === ac.id)) allUnits.push(ac); });
 
             allUnits.forEach(u => {
                 const isActive = activeConsults.find(ac => ac.id === u.id);
-                div.innerHTML += `
-                <div onclick="toggleConsult('${u.id}', '${u.icon}')" class="consult-chip cursor-pointer select-none transition ${isActive ? 'active' : 'bg-slate-100 text-slate-400'}">
-                    <i class="fa-solid ${u.icon}"></i> ${u.id}
-                </div>`;
+                div.innerHTML += `<div onclick="toggleConsult('${u.id}', '${u.icon}')" class="consult-chip cursor-pointer select-none ${isActive ? 'active' : 'inactive'}"><i class="fa-solid ${u.icon}"></i> ${u.id}</div>`;
             });
         }
 
         function toggleConsult(id, icon) {
             const idx = activeConsults.findIndex(c => c.id === id);
-            if(idx > -1) activeConsults.splice(idx, 1);
-            else activeConsults.push({id, icon});
+            if(idx > -1) activeConsults.splice(idx, 1); else activeConsults.push({id, icon});
             renderConsults();
         }
 
         function addCustomConsult() {
             const val = document.getElementById('customConsult').value.trim();
-            if(val) {
-                activeConsults.push({id: val, icon: 'fa-circle-plus'});
-                document.getElementById('customConsult').value = "";
-                renderConsults();
-            }
+            if(val) { activeConsults.push({id: val, icon: 'fa-user-md'}); document.getElementById('customConsult').value = ""; renderConsults(); }
         }
 
-        // TODOS
         function renderTodos() {
             const div = document.getElementById('todoContainer');
             div.innerHTML = "";
             currentTodos.forEach((t, i) => {
-                div.innerHTML += `
-                <div class="flex items-center gap-2 p-2 bg-white rounded border ${t.done ? 'border-green-200 bg-green-50' : 'border-slate-200'}">
-                    <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo(${i})" class="accent-green-500">
-                    <input type="text" value="${t.text}" onblur="currentTodos[${i}].text=this.value" class="flex-1 bg-transparent outline-none text-xs ${t.done ? 'line-through text-green-600' : 'text-slate-700'}">
-                    <i class="fa-solid fa-xmark text-slate-300 cursor-pointer" onclick="removeTodo(${i})"></i>
-                </div>`;
+                div.innerHTML += `<div class="flex items-center gap-2 p-2 bg-white rounded border ${t.done ? 'border-green-200 bg-green-50' : 'border-slate-200'}"><input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo(${i})" class="accent-green-500"><input type="text" value="${t.text}" onblur="currentTodos[${i}].text=this.value" class="flex-1 bg-transparent outline-none text-xs ${t.done ? 'line-through text-green-600' : 'text-slate-700'}"><i class="fa-solid fa-xmark text-slate-300 cursor-pointer" onclick="removeTodo(${i})"></i></div>`;
             });
         }
         function addTodo() { currentTodos.push({text:"New Task", done:false}); renderTodos(); }
         function removeTodo(i) { currentTodos.splice(i,1); renderTodos(); }
         function toggleTodo(i) { currentTodos[i].done = !currentTodos[i].done; renderTodos(); }
 
-        // COLORS
         function renderColorPicker() {
-            document.getElementById('colorContainer').innerHTML = COLORS.map(c => 
-                `<div class="color-dot bg-[${c}] shadow-sm border-slate-200" style="background-color: ${c}" onclick="setActiveColor('${c}')" data-col="${c}"></div>`
-            ).join('');
+            document.getElementById('colorContainer').innerHTML = COLORS.map(c => `<div class="color-dot bg-[${c}] shadow-sm" style="background-color: ${c}" onclick="setActiveColor('${c}')" data-col="${c}"></div>`).join('');
         }
         function setActiveColor(c) {
             document.querySelectorAll('.color-dot').forEach(el => el.classList.toggle('selected', el.dataset.col === c));
             document.getElementById('colorContainer').dataset.selected = c;
         }
 
-        // WARD SELECTOR
         function changeWard() {
             toggleElement('wardModal', true);
-            const list = document.getElementById('wardList');
-            list.innerHTML = Array.from(wards).map(w => 
-                `<div onclick="selectWard('${w}')" class="p-3 mb-2 rounded-lg cursor-pointer font-bold transition flex justify-between ${w === currentWard ? 'bg-medical-50 text-medical-700 border border-medical-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}">
-                    ${w} ${w===currentWard ? '<i class="fa-solid fa-check"></i>':''}
-                </div>`
-            ).join('');
+            document.getElementById('wardList').innerHTML = Array.from(wards).map(w => `<div onclick="selectWard('${w}')" class="p-3 mb-2 rounded-lg cursor-pointer font-bold transition flex justify-between ${w === currentWard ? 'bg-medical-50 text-medical-700 border border-medical-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}">${w} ${w===currentWard ? '<i class="fa-solid fa-check"></i>':''}</div>`).join('');
         }
-        function createNewWard() {
-            const n = document.getElementById('newWardName').value.trim();
-            if(n) selectWard(n);
-        }
-        function selectWard(n) {
-            currentWard = n;
-            toggleElement('wardModal', false);
-            renderGrid();
-        }
+        function createNewWard() { const n = document.getElementById('newWardName').value.trim(); if(n) selectWard(n); }
+        function selectWard(n) { currentWard = n; toggleElement('wardModal', false); renderView(); }
 
-        // SAVE & DELETE
         async function saveRecord() {
-            if(ROLE === 'chief' && !confirm("Saving in Chief Mode creates record in YOUR user DB, not original owner. Continue?")) return;
-            
+            if(ROLE === 'chief' && !confirm("Saving in Chief Mode creates record in YOUR user DB. Continue?")) return;
             const btn = document.getElementById('btnSave'); btn.innerText = "Saving...";
             
             // Smart Name
             let name = document.getElementById('editName').value.trim();
-            if(!name) {
-                const count = records.length + 1;
-                name = `Patient_${String(count).padStart(3, '0')}`;
-            }
+            if(!name) { const count = records.length + 1; name = `Patient_${String(count).padStart(3, '0')}`; }
 
-            const payload = {
+            const p = {
                 id: editingId || 'rec_' + Date.now(),
                 bed_number: document.getElementById('editBed').value,
                 hn: document.getElementById('editHN').value,
@@ -624,70 +607,43 @@
                 is_discharged: currentDischarged
             };
 
-            // Optimistic Update (Resident Only)
             if (ROLE !== 'chief') {
-                const clean = {...payload, consult_units: activeConsults, todo_list: currentTodos};
-                const idx = records.findIndex(r => r.id === payload.id);
+                const clean = {...p, consult_units: activeConsults, todo_list: currentTodos};
+                const idx = records.findIndex(r => r.id === p.id);
                 if(idx > -1) records[idx] = clean; else records.push(clean);
-                renderGrid();
+                renderView();
             }
             closeEditor();
-
-            await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'save', db: DB_NAME, password: PASSWORD, ...payload}) });
-            if(ROLE === 'chief') fetchData(); // Refresh chief view
+            await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'save', db: DB_NAME, password: PASSWORD, ...p}) });
+            if(ROLE === 'chief') fetchData(); 
             btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`;
         }
 
         async function deleteRecord() {
             if(!confirm("Permanently delete?")) return;
             records = records.filter(r => r.id !== editingId);
-            renderGrid();
-            closeEditor();
+            renderView(); closeEditor();
             await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: DB_NAME, password: PASSWORD, id: editingId}) });
         }
 
-        // EXPORT
         function exportData() {
             const active = records.filter(r => r.ward === currentWard && !r.is_discharged);
             let txt = `WARD REPORT: ${currentWard}\nGenerated: ${new Date().toLocaleString()}\n\n`;
-            
             active.sort((a,b) => parseInt(a.bed_number) - parseInt(b.bed_number));
             active.forEach(r => {
-                txt += `----------------------------------------\n`;
                 txt += `BED ${r.bed_number} | ${r.name} (HN: ${r.hn})\n`;
-                const consults = r.consult_units.map(c => c.id).join(", ");
-                if(consults) txt += `CONSULTS: ${consults}\n`;
+                if(r.consult_units.length) txt += `CONSULTS: ${r.consult_units.map(c => c.id).join(", ")}\n`;
                 if(r.details) txt += `DETAILS:\n${r.details}\n`;
                 const pending = r.todo_list.filter(t => !t.done).map(t => `- [ ] ${t.text}`).join("\n");
                 if(pending) txt += `TODO:\n${pending}\n`;
-                txt += `\n`;
+                txt += `----------------------------------------\n`;
             });
-
-            const blob = new Blob([txt], {type: "text/plain"});
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `${currentWard}_Report.txt`;
-            a.click();
+            const a = document.createElement("a"); a.href = window.URL.createObjectURL(new Blob([txt], {type: "text/plain"})); a.download = `${currentWard}_Report.txt`; a.click();
         }
 
-        // UI UTILS
-        function toggleElement(id, show) {
-            const el = document.getElementById(id);
-            if(show) el.classList.remove('hidden'); else el.classList.add('hidden');
-        }
-        function toggleDischarge() {
-            currentDischarged = !currentDischarged;
-            const btn = document.getElementById('btnDischarge');
-            if(currentDischarged) { btn.innerText = "Discharged"; btn.className = "px-3 py-2 bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition"; }
-            else { btn.innerText = "Archive"; btn.className = "px-3 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold transition hover:bg-slate-200"; }
-        }
-        function toggleFullScreen() {
-            const el = document.getElementById('editDetails');
-            const btn = document.getElementById('exitFsBtn');
-            el.classList.toggle('fs-mode');
-            btn.classList.toggle('hidden');
-        }
+        function toggleElement(id, show) { const el = document.getElementById(id); if(show) el.classList.remove('hidden'); else el.classList.add('hidden'); }
+        function toggleDischarge() { currentDischarged = !currentDischarged; const btn = document.getElementById('btnDischarge'); btn.innerText = currentDischarged ? "Discharged" : "Archive"; btn.className = currentDischarged ? "px-4 py-2 bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition" : "px-4 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold transition hover:bg-slate-200"; }
+        function toggleFullScreen() { const el = document.getElementById('editDetails'); const btn = document.getElementById('exitFsBtn'); el.classList.toggle('fs-mode'); btn.classList.toggle('hidden'); }
     </script>
 </body>
 </html>
