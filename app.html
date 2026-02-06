@@ -44,14 +44,16 @@
 </head>
 <body class="h-screen flex flex-col overflow-hidden text-sm">
 
-    <!-- FIXED TOAST -->
     <div id="saveToast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[10001] px-6 py-3 rounded-full text-white font-bold shadow-2xl transition-all duration-300 opacity-0 translate-y-10 flex items-center gap-3">
         <i class="fa-solid fa-floppy-disk"></i> <span id="saveToastMsg">Saving...</span>
     </div>
 
+    <!-- AUTH OVERLAY -->
     <div id="authOverlay" class="fixed inset-0 z-50 bg-slate-50 flex items-center justify-center p-6">
         <div class="w-full max-w-sm text-center bg-white p-8 rounded-2xl shadow-float border border-slate-100">
-            <div class="w-16 h-16 bg-medical-600 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-3xl shadow-lg shadow-medical-500/30"><i class="fa-solid fa-hospital-user"></i></div>
+            <div class="w-16 h-16 bg-medical-600 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-3xl shadow-lg shadow-medical-500/30">
+                <i class="fa-solid fa-hospital-user"></i>
+            </div>
             <h1 class="text-xl font-bold text-slate-800" id="authTitle">Ward Manager</h1>
             <p class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-6" id="authSub">Accessing: <span id="loginDbName" class="text-medical-600">...</span></p>
             <div id="authForm" class="hidden space-y-3">
@@ -67,11 +69,15 @@
         </div>
     </div>
 
+    <!-- MAIN APP -->
     <div id="appContainer" class="hidden flex-1 flex flex-col h-full bg-[#f8fafc]">
         <header class="glass-header h-16 flex items-center justify-between px-4 shrink-0 z-20">
             <div class="flex items-center gap-3">
                 <button onclick="toggleGridMenu()" class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-600 flex items-center justify-center shadow-sm hover:bg-slate-50 hover:text-medical-600 transition" title="Grid Settings"><i class="fa-solid fa-table-cells"></i></button>
-                <div class="leading-tight"><h2 class="font-bold text-lg text-slate-800" id="headerWard">General Ward</h2><span id="roleBadge" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Resident View</span></div>
+                <div class="leading-tight">
+                    <h2 class="font-bold text-lg text-slate-800" id="headerWard">General Ward</h2>
+                    <span id="roleBadge" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Resident View</span>
+                </div>
             </div>
             <div class="flex items-center gap-2">
                  <div class="bg-slate-100 p-1 rounded-lg flex text-xs font-bold text-slate-500 mr-2 border border-slate-200">
@@ -141,7 +147,6 @@
                     <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
                         <div class="flex justify-between items-center mb-3"><h4 class="font-bold text-xs text-slate-500 uppercase"><i class="fa-solid fa-list-check mr-1"></i> To-Do List</h4><button onclick="addTodo()" class="w-6 h-6 rounded bg-white border border-slate-200 text-medical-600 flex items-center justify-center hover:shadow-sm"><i class="fa-solid fa-plus text-xs"></i></button></div>
                         <div id="todoContainer" class="space-y-2"></div>
-                        <!-- CLEANED DATALIST -->
                         <datalist id="taskSuggestions">
                             <option value="Follow Lab">
                             <option value="Film Chest">
@@ -196,7 +201,7 @@
         let activeConsults = []; let currentTodos = []; let currentDischarged = false;
         let isSelectMode = false; let selectedIds = new Set();
         let autoSaveTimer = null; let refreshTimer = null;
-        let toastTimer = null; // Added toast timer variable
+        let toastTimer = null; 
 
         window.onload = () => {
             if(!DB_NAME) return document.body.innerHTML = "<div class='p-10 text-center font-bold'>Error: No Database Selected</div>";
@@ -219,7 +224,7 @@
                     document.getElementById('authOverlay').classList.add('hidden');
                     document.getElementById('appContainer').classList.remove('hidden');
                     await fetchData();
-                    changeWard(); // Function exists now
+                    changeWard(); 
                     startAutomation();
                 } else { alert("Incorrect Password"); }
             } catch(e) { alert("Login Error: " + e.message); } finally { btn.innerText = "Login"; }
@@ -359,10 +364,8 @@
         function toggleTodo(i) { currentTodos[i].done = !currentTodos[i].done; renderTodos(); }
         function renderColorPicker() { document.getElementById('colorContainer').innerHTML = COLORS.map(c => `<div class="color-dot bg-[${c}] shadow-sm" style="background-color: ${c}" onclick="setActiveColor('${c}')" data-col="${c}"></div>`).join(''); }
         function setActiveColor(c) { document.querySelectorAll('.color-dot').forEach(el => el.classList.toggle('selected', el.dataset.col === c)); document.getElementById('colorContainer').dataset.selected = c; }
-        function createNewWard() { const n = document.getElementById('newWardName').value.trim(); if(n) { currentWard = n; wards.add(n); changeWard(); renderView(); }}
-        function selectWard(n) { currentWard = n; toggleElement('wardModal', false); renderView(); }
         
-        // GLOBAL FUNCTION FOR WARD SELECTOR
+        // FIXED WARD SELECTOR GLOBAL FUNCTION
         function changeWard() {
             toggleElement('wardModal', true);
             document.getElementById('wardList').innerHTML = Array.from(wards).map(w => `
@@ -374,32 +377,23 @@
                 </div>
             `).join('');
         }
-
+        function createNewWard() { const n = document.getElementById('newWardName').value.trim(); if(n) { currentWard = n; wards.add(n); changeWard(); renderView(); }}
+        function selectWard(n) { currentWard = n; toggleElement('wardModal', false); renderView(); }
+        
+        // TOAST SAVE LOGIC
         async function saveRecord(silent = false) {
             const btn = document.getElementById('btnSave'); if(!silent) btn.innerText = "Saving...";
-            
-            // FIXED TOAST LOGIC
             const toast = document.getElementById('saveToast');
             const toastMsg = document.getElementById('saveToastMsg');
             
             if(!silent) {
-                // Clear any existing timer to prevent premature hiding
                 clearTimeout(toastTimer);
-                // Show Saving (Black)
                 toast.className = "fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[10001] px-6 py-3 rounded-full text-white font-bold shadow-2xl transition-all duration-300 flex items-center gap-3 bg-slate-900 translate-y-0 opacity-100";
                 toastMsg.innerText = "Saving...";
             }
-
             const targetBed = document.getElementById('editBed').value; const targetName = document.getElementById('editName').value.trim();
             const conflict = records.find(r => r.id !== editingId && r.ward === currentWard && !r.is_discharged && (r.bed_number == targetBed || (targetName && r.name === targetName)));
-            if (conflict && !silent) { 
-                if(!confirm(`CONFLICT DETECTED!\nBed ${conflict.bed_number} occupied by ${conflict.name}.\nOverwrite?`)) { 
-                    btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`; 
-                    // Hide toast if cancelled
-                    toast.classList.add('translate-y-10', 'opacity-0');
-                    return; 
-                } 
-            }
+            if (conflict && !silent) { if(!confirm(`CONFLICT DETECTED!\nBed ${conflict.bed_number} occupied by ${conflict.name}.\nOverwrite?`)) { btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`; toast.classList.add('translate-y-10', 'opacity-0'); return; } }
             let name = targetName; if(!name) { const count = records.length + 1; name = `Patient_${String(count).padStart(3, '0')}`; }
             const validTodos = currentTodos.filter(t => t.text.trim() !== "");
             const detailsVal = document.getElementById('editDetailsDesktop').value;
@@ -409,20 +403,14 @@
             const payload = { action: 'save', db: targetDB, requester: DB_NAME, password: PASSWORD, ...p };
             if (ROLE !== 'chief') { const clean = {...p, consult_units: activeConsults, todo_list: validTodos}; const idx = records.findIndex(r => r.id === p.id); if(idx > -1) records[idx] = clean; else records.push(clean); if(!silent) renderView(); }
             if(!silent && !document.getElementById('fullscreenOverlay').classList.contains('hidden')) {} else if (!silent) { closeEditor(); }
-            
             await fetch(API_URL, { method: 'POST', headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify(payload) });
             if(ROLE === 'chief') fetchData(true);
             
             if(!silent) {
                 btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`;
-                // Show Success (Green)
                 toast.className = "fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[10001] px-6 py-3 rounded-full text-white font-bold shadow-2xl transition-all duration-300 flex items-center gap-3 bg-emerald-600 translate-y-0 opacity-100";
                 toastMsg.innerText = "Saved Successfully";
-                // Fade out after 2s
-                toastTimer = setTimeout(() => { 
-                    toast.classList.remove('translate-y-0', 'opacity-100');
-                    toast.classList.add('translate-y-10', 'opacity-0'); 
-                }, 2000);
+                toastTimer = setTimeout(() => { toast.classList.add('translate-y-10', 'opacity-0'); }, 2000);
             }
         }
         
@@ -437,27 +425,35 @@
             const archived = records.filter(r => r.is_discharged);
             if (archived.length === 0) { list.innerHTML = "<div class='col-span-full text-center p-10 text-slate-400 italic'>No archived records found.</div>"; return; }
             archived.forEach(r => {
-                const date = new Date(r.updated_at).toLocaleDateString();
+                const dateStr = r.updated_at ? new Date(r.updated_at).toLocaleDateString() : 'N/A';
                 list.innerHTML += `
-                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center cursor-pointer hover:bg-slate-50 transition" onclick="openEditor('${r.id}')">
                     <div>
                         <h4 class="font-bold text-slate-800">${r.name}</h4>
                         <p class="text-xs text-slate-500">HN: ${r.hn} • Ward: ${r.ward}</p>
-                        <p class="text-[10px] text-slate-400 mt-1">Archived: ${date}</p>
+                        <p class="text-[10px] text-slate-400 mt-1">Archived: ${dateStr}</p>
                     </div>
-                    <button onclick="restorePatient('${r.id}')" class="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-200 transition">Restore</button>
+                    <button onclick="restorePatient('${r.id}', event)" class="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-200 transition">Restore</button>
                 </div>`;
             });
         }
         
-        async function restorePatient(id) {
-            if(!confirm("Restore patient to active ward?")) return;
-            const idx = records.findIndex(r => r.id === id);
-            if(idx > -1) records[idx].is_discharged = false;
-            renderDischarged();
-            const r = records[idx];
-            const p = { id: r.id, is_discharged: false, ward: r.ward, bed_number: r.bed_number, hn: r.hn, name: r.name, details: r.details, consult_units: JSON.stringify(r.consult_units), color_id: r.color_id, todo_list: JSON.stringify(r.todo_list) };
+        async function restorePatient(id, event) {
+            event.stopPropagation();
+            const r = records.find(x => x.id === id);
+            const newBed = prompt(`Restore ${r.name} to Bed Number:`, r.bed_number || 1);
+            if (!newBed) return;
+            const conflict = records.find(p => !p.is_discharged && p.ward === currentWard && p.bed_number == newBed);
+            if (conflict) { alert(`Bed ${newBed} occupied by ${conflict.name}. Restore cancelled.`); return; }
+            
+            // Local Update
+            r.is_discharged = false; r.bed_number = newBed; r.updated_at = new Date().toISOString();
+            
+            // Backend Update
+            const p = { id: r.id, is_discharged: false, ward: r.ward, bed_number: newBed, hn: r.hn, name: r.name, details: r.details, consult_units: JSON.stringify(r.consult_units), color_id: r.color_id, todo_list: JSON.stringify(r.todo_list) };
             await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'save', db: r.owner || DB_NAME, password: PASSWORD, requester: DB_NAME, ...p}) });
+            
+            renderView();
         }
         
         async function deleteWard(wardName) {
