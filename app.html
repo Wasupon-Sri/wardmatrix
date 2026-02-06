@@ -44,7 +44,7 @@
 </head>
 <body class="h-screen flex flex-col overflow-hidden text-sm">
 
-    <div id="saveToast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[10001] px-6 py-3 rounded-full text-white font-bold shadow-2xl transition-all duration-300 opacity-0 translate-y-10 flex items-center gap-3">
+    <div id="saveToast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[10001] px-6 py-3 rounded-full text-white font-bold shadow-2xl transition-all duration-300 opacity-0 translate-y-10 flex items-center gap-3 bg-slate-900 pointer-events-none">
         <i class="fa-solid fa-floppy-disk"></i> <span id="saveToastMsg">Saving...</span>
     </div>
 
@@ -236,7 +236,12 @@
             if (refreshTimer) clearInterval(refreshTimer);
             if (autoSaveTimer) clearInterval(autoSaveTimer);
 
-            refreshTimer = setInterval(() => { if(document.getElementById('editorModal').classList.contains('hidden')) fetchData(true); }, 5000);
+            // FIX: Only auto-refresh if editor is CLOSED AND we are NOT in select mode
+            refreshTimer = setInterval(() => { 
+                const editorClosed = document.getElementById('editorModal').classList.contains('hidden');
+                if(editorClosed && !isSelectMode) fetchData(true); 
+            }, 5000);
+            
             autoSaveTimer = setInterval(() => { if(!document.getElementById('editorModal').classList.contains('hidden')) saveRecord(true); }, 30000);
         }
 
@@ -298,7 +303,8 @@
             for(let i=1; i<=totalBeds; i++) {
                 const occupants = activeRecords.filter(r => parseInt(r.bed_number) === i);
                 if (occupants.length === 0) {
-                    grid.innerHTML += `<div onclick="openEditor(null, ${i})" class="bed-card vacant group"><span class="text-3xl font-bold text-slate-300 group-hover:text-medical-400">${i}</span><span class="text-[10px] font-bold text-slate-300 uppercase mt-1 group-hover:text-medical-500">Vacant</span></div>`;
+                    // FIX: Updated click handler to prevent opening editor on vacant beds when selecting
+                    grid.innerHTML += `<div onclick="handleVacantClick(${i})" class="bed-card vacant group"><span class="text-3xl font-bold text-slate-300 group-hover:text-medical-400">${i}</span><span class="text-[10px] font-bold text-slate-300 uppercase mt-1 group-hover:text-medical-500">Vacant</span></div>`;
                 } else {
                     occupants.forEach(r => {
                         const isSelected = selectedIds.has(r.id);
@@ -319,6 +325,12 @@
                     });
                 }
             }
+        }
+
+        // FIX: Helper for vacant bed clicks
+        function handleVacantClick(i) {
+            if(isSelectMode) return; // Do nothing in select mode
+            openEditor(null, i);
         }
 
         function toggleSelectMode() { isSelectMode = !isSelectMode; if(!isSelectMode) selectedIds.clear(); document.getElementById('selectionToolbar').classList.toggle('hidden', !isSelectMode); document.getElementById('btnSelectMode').classList.toggle('text-medical-600', isSelectMode); renderGrid(); }
@@ -397,10 +409,33 @@
         function createNewWard() { const n = document.getElementById('newWardName').value.trim(); if(n) { currentWard = n; wards.add(n); changeWard(); renderView(); }}
         function selectWard(n) { currentWard = n; toggleElement('wardModal', false); renderView(); }
         
-        async function saveRecord(silent = false) {
-            const btn = document.getElementById('btnSave'); if(!silent) btn.innerText = "Saving...";
+        // FIX: Dedicated toast helpers for consistent animation
+        function showToast(msg, isSuccess = false) {
             const toast = document.getElementById('saveToast');
             const toastMsg = document.getElementById('saveToastMsg');
+            
+            clearTimeout(toastTimer);
+            
+            toastMsg.innerText = msg;
+            toast.className = `fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[10001] px-6 py-3 rounded-full text-white font-bold shadow-2xl transition-all duration-300 flex items-center gap-3 translate-y-0 opacity-100 pointer-events-none ${isSuccess ? 'bg-emerald-600' : 'bg-slate-900'}`;
+            
+            if (isSuccess) {
+                toastTimer = setTimeout(hideToast, 2000);
+            }
+        }
+
+        function hideToast() {
+            const toast = document.getElementById('saveToast');
+            toast.classList.remove('translate-y-0', 'opacity-100');
+            toast.classList.add('translate-y-10', 'opacity-0');
+        }
+
+        async function saveRecord(silent = false) {
+            const btn = document.getElementById('btnSave'); 
+            if(!silent) {
+                btn.innerText = "Saving...";
+                showToast("Saving...");
+            }
             
             // --- FIX START: EMPTY RECORD CHECK ---
             const targetBed = document.getElementById('editBed').value; 
@@ -410,21 +445,28 @@
             const validTodos = currentTodos.filter(t => t.text.trim() !== "");
             
             // If it is an AUTO-SAVE (silent) and the main fields are EMPTY, do not save.
-            // This prevents creating "Phantom" admissions when a user just clicks a bed and waits.
             if (silent && !editingId && !targetName && !targetHN && !detailsVal && activeConsults.length === 0 && validTodos.length === 0) {
                 console.log("Skipping auto-save: Empty new record.");
                 return;
             }
             // --- FIX END ---
 
-            if(!silent) {
-                clearTimeout(toastTimer);
-                toast.className = "fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[10001] px-6 py-3 rounded-full text-white font-bold shadow-2xl transition-all duration-300 flex items-center gap-3 bg-slate-900 translate-y-0 opacity-100";
-                toastMsg.innerText = "Saving...";
-            }
-
             const conflict = records.find(r => r.id !== editingId && r.ward === currentWard && !r.is_discharged && (r.bed_number == targetBed || (targetName && r.name === targetName)));
-            if (conflict && !silent) { if(!confirm(`CONFLICT DETECTED!\nBed ${conflict.bed_number} occupied by ${conflict.name}.\nOverwrite?`)) { btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`; toast.classList.add('translate-y-10', 'opacity-0'); return; } }
+            
+            // --- FIX: Silent Conflict Safety ---
+            if (conflict) {
+                if (silent) {
+                    // Abort silent save to avoid overwriting conflicting data
+                    console.warn("Auto-save skipped due to conflict.");
+                    return; 
+                } else {
+                    if(!confirm(`CONFLICT DETECTED!\nBed ${conflict.bed_number} occupied by ${conflict.name}.\nOverwrite?`)) { 
+                        btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`; 
+                        hideToast();
+                        return; 
+                    }
+                }
+            }
             
             let name = targetName; 
             if(!name) { const count = records.length + 1; name = `Patient_${String(count).padStart(3, '0')}`; }
@@ -451,9 +493,7 @@
             
             if(!silent) {
                 btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`;
-                toast.className = "fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[10001] px-6 py-3 rounded-full text-white font-bold shadow-2xl transition-all duration-300 flex items-center gap-3 bg-emerald-600 translate-y-0 opacity-100";
-                toastMsg.innerText = "Saved Successfully";
-                toastTimer = setTimeout(() => { toast.classList.add('translate-y-10', 'opacity-0'); }, 2000);
+                showToast("Saved Successfully", true);
             }
         }
         
