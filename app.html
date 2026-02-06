@@ -141,6 +141,13 @@
                 <div class="flex gap-2"><button onclick="toggleDischarge()" id="btnDischarge" class="px-4 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold transition hover:bg-slate-200">Archive</button><button onclick="closeEditor()" class="w-9 h-9 rounded-full bg-slate-50 text-slate-400 hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-xmark text-lg"></i></button></div>
             </div>
             <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-white">
+                
+                <!-- Chief Only: Resident Selector -->
+                <div id="residentSelectorDiv" class="hidden flex flex-col space-y-1 mb-2 p-3 bg-orange-50 border border-orange-200 rounded-xl">
+                    <label class="text-[10px] font-bold text-orange-600 uppercase flex items-center gap-1"><i class="fa-solid fa-crown"></i> Assign to Resident</label>
+                    <select id="residentSelect" class="w-full bg-white border border-orange-300 rounded-lg p-2 font-bold text-sm outline-none focus:ring-2 focus:ring-orange-200"></select>
+                </div>
+
                 <div class="flex gap-4 p-5 bg-slate-50 rounded-2xl border border-slate-100">
                     <div class="w-24 space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Bed No.</label><select id="editBed" onchange="changeBedInEditor()" class="w-full bg-white border border-slate-200 rounded-lg p-2.5 font-bold text-center text-lg outline-none focus:border-medical-500 shadow-sm"></select></div>
                     <div class="flex-1 space-y-1"><label class="text-[10px] font-bold text-slate-400 uppercase">Name (Auto-fill if empty)</label><input type="text" id="editName" class="w-full bg-white border border-slate-200 rounded-lg p-2.5 font-bold text-lg outline-none focus:border-medical-500 placeholder:font-normal placeholder:text-slate-300 shadow-sm" placeholder="e.g. Somchai Jai-dee"></div>
@@ -178,7 +185,7 @@
         let DB_NAME = new URLSearchParams(window.location.search).get('db');
         let ROLE = new URLSearchParams(window.location.search).get('role') || 'resident';
         let PASSWORD = "";
-        let records = [];
+        let records = []; let availableResidents = [];
         let currentWard = "General Ward";
         let wards = new Set(["General Ward"]);
         let gridCols = 3; let totalBeds = 36;
@@ -207,7 +214,7 @@
                     PASSWORD = p;
                     document.getElementById('authOverlay').classList.add('hidden');
                     document.getElementById('appContainer').classList.remove('hidden');
-                    // Initial fetch then start loops
+                    // Initial fetch
                     await fetchData();
                     changeWard(); 
                     startAutomation();
@@ -217,21 +224,19 @@
         async function setupPassword() { const p = document.getElementById('setupPin').value; if(!p) return; await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'auth_set_password', db: DB_NAME, password: p}) }); location.reload(); }
 
         function startAutomation() {
-            // Auto Refresh every 5s
-            refreshTimer = setInterval(() => {
-                if(document.getElementById('editorModal').classList.contains('hidden')) fetchData(true);
-            }, 5000);
-            // Auto Save every 30s if editor open
-            autoSaveTimer = setInterval(() => {
-                if(!document.getElementById('editorModal').classList.contains('hidden')) saveRecord(true);
-            }, 30000);
+            refreshTimer = setInterval(() => { if(document.getElementById('editorModal').classList.contains('hidden')) fetchData(true); }, 5000);
+            autoSaveTimer = setInterval(() => { if(!document.getElementById('editorModal').classList.contains('hidden')) saveRecord(true); }, 30000);
         }
 
         async function fetchData(silent = false) {
             if(!silent) document.getElementById('btnRefresh').classList.add('animate-spin');
             if (ROLE === 'chief') {
+                // Chief Mode: Fetch User List First
                 const listRes = await fetch(`${API_URL}?action=admin_list_users`);
                 const listJson = await listRes.json();
+                // Filter only residents for assignment
+                availableResidents = listJson.users.filter(u => u.role === 'resident').map(u => u.name);
+                
                 const promises = listJson.users.map(u => fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'read', db: u.name, password: PASSWORD}) }).then(r => r.json()).then(data => data.map(rec => ({...processRecord(rec), owner: u.name}))).catch(() => []));
                 const results = await Promise.all(promises);
                 records = results.flat();
@@ -319,8 +324,18 @@
         function openEditor(id, bedNum) {
             toggleElement('editorModal', true); editingId = id; currentTodos = []; activeConsults = []; currentDischarged = false; originalOwner = null;
             const sel = document.getElementById('editBed'); sel.innerHTML = ""; for(let i=1; i<=100; i++) sel.innerHTML += `<option value="${i}">${i}</option>`;
+            
+            // Chief Selector Logic
+            if(ROLE === 'chief') {
+                const resSel = document.getElementById('residentSelect');
+                document.getElementById('residentSelectorDiv').classList.remove('hidden');
+                resSel.innerHTML = availableResidents.map(r => `<option value="${r}">${r}</option>`).join('');
+            }
+
             if (id) {
                 const r = records.find(x => x.id === id); originalOwner = r.owner;
+                if(ROLE === 'chief') document.getElementById('residentSelect').value = originalOwner;
+                
                 document.getElementById('editorTitle').innerText = "Edit Patient"; document.getElementById('editBed').value = r.bed_number; document.getElementById('editorBedBadge').innerText = `#${r.bed_number}`;
                 document.getElementById('editHN').value = r.hn; document.getElementById('editName').value = r.name; document.getElementById('editDetails').value = r.details;
                 activeConsults = r.consult_units ? JSON.parse(JSON.stringify(r.consult_units)) : []; currentTodos = r.todo_list ? JSON.parse(JSON.stringify(r.todo_list)) : [];
@@ -328,7 +343,9 @@
             } else {
                 document.getElementById('editorTitle').innerText = "Admit Patient"; document.getElementById('editBed').value = bedNum || 1; document.getElementById('editorBedBadge').innerText = `#${bedNum||1}`;
                 document.getElementById('editHN').value = ""; document.getElementById('editName').value = ""; document.getElementById('editDetails').value = "";
-                setActiveColor('#ffffff'); toggleElement('btnDelete', false); currentTodos = [{text: "", done: false}, {text: "", done: false}];
+                setActiveColor('#ffffff'); toggleElement('btnDelete', false);
+                currentTodos = [{text: "", done: false}, {text: "", done: false}];
+                if(ROLE === 'chief') originalOwner = document.getElementById('residentSelect').value;
             }
             renderConsults(); renderTodos(); updateDischargeBtn();
         }
@@ -359,20 +376,13 @@
         function selectWard(n) { currentWard = n; toggleElement('wardModal', false); renderView(); }
 
         async function saveRecord(silent = false) {
-            const btn = document.getElementById('btnSave'); 
-            if(!silent) btn.innerText = "Saving...";
-            
-            // CONFLICT CHECK
+            const btn = document.getElementById('btnSave'); if(!silent) btn.innerText = "Saving...";
             const targetBed = document.getElementById('editBed').value;
             const targetName = document.getElementById('editName').value.trim();
             const conflict = records.find(r => r.id !== editingId && r.ward === currentWard && !r.is_discharged && (r.bed_number == targetBed || (targetName && r.name === targetName)));
-            
-            if (conflict && !silent) {
-                if(!confirm(`CONFLICT DETECTED!\nBed ${conflict.bed_number} is occupied by ${conflict.name}.\nOverwrite anyway?`)) { btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`; return; }
-            }
+            if (conflict && !silent) { if(!confirm(`CONFLICT DETECTED!\nBed ${conflict.bed_number} occupied by ${conflict.name}.\nOverwrite?`)) { btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`; return; } }
 
-            let name = targetName;
-            if(!name) { const count = records.length + 1; name = `Patient_${String(count).padStart(3, '0')}`; }
+            let name = targetName; if(!name) { const count = records.length + 1; name = `Patient_${String(count).padStart(3, '0')}`; }
             const validTodos = currentTodos.filter(t => t.text.trim() !== "");
 
             const p = {
@@ -388,17 +398,31 @@
                 is_discharged: currentDischarged
             };
 
-            // Override logic: If Chief editing Resident's record, save to Resident's DB
-            const targetDB = (ROLE === 'chief' && originalOwner) ? originalOwner : DB_NAME;
+            // TARGET LOGIC
+            let targetDB = DB_NAME;
+            if (ROLE === 'chief') {
+                targetDB = document.getElementById('residentSelect').value;
+                if(!targetDB) { alert("Please select a resident to assign."); return; }
+                
+                // MOVE LOGIC: If Owner Changed -> Delete from Old
+                if(originalOwner && originalOwner !== targetDB) {
+                    await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: originalOwner, password: PASSWORD, requester: DB_NAME, id: p.id}) });
+                }
+            }
 
-            // Optimistic Update
-            const clean = {...p, consult_units: activeConsults, todo_list: validTodos};
-            const idx = records.findIndex(r => r.id === p.id);
-            if(idx > -1) records[idx] = clean; else records.push(clean);
-            if(!silent) renderView();
+            // Requester Auth
+            const payload = { action: 'save', db: targetDB, requester: DB_NAME, password: PASSWORD, ...p };
 
+            if (ROLE !== 'chief') {
+                const clean = {...p, consult_units: activeConsults, todo_list: validTodos};
+                const idx = records.findIndex(r => r.id === p.id);
+                if(idx > -1) records[idx] = clean; else records.push(clean);
+                if(!silent) renderView();
+            }
             if(!silent) closeEditor();
-            await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'save', db: targetDB, password: PASSWORD, ...p}) });
+            
+            await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+            if(ROLE === 'chief') fetchData(true);
             if(!silent) btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`;
         }
 
@@ -407,7 +431,7 @@
             records = records.filter(r => r.id !== editingId);
             const targetDB = (ROLE === 'chief' && originalOwner) ? originalOwner : DB_NAME;
             renderView(); closeEditor();
-            await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: targetDB, password: PASSWORD, id: editingId}) });
+            await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: targetDB, requester: DB_NAME, password: PASSWORD, id: editingId}) });
         }
 
         function manualRefresh() { fetchData(); }
