@@ -41,13 +41,20 @@
         .grid-1 { grid-template-columns: repeat(1, 1fr); } .grid-2 { grid-template-columns: repeat(2, 1fr); } .grid-3 { grid-template-columns: repeat(3, 1fr); } .grid-4 { grid-template-columns: repeat(4, 1fr); } .grid-5 { grid-template-columns: repeat(5, 1fr); } .grid-6 { grid-template-columns: repeat(6, 1fr); }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; } .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #e2e8f0; border-radius: 20px; }
         
-        /* === FIX: Force Black Cursor & Caret === */
+        /* FIX: High Contrast Black Cursor for App */
         input, textarea, [contenteditable="true"] {
-            /* Force the blinking typing line to be black */
             caret-color: black !important;
-            
-            /* Override system cursor with a custom Black I-Beam SVG */
             cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32' stroke='black' stroke-width='3' stroke-linecap='round'><path d='M16 4v24M11 4h10M11 28h10'/></svg>") 16 16, text !important;
+        }
+
+        @keyframes spin-forced { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .spin-active { animation: spin-forced 1s linear infinite; }
+
+        @media print {
+            body * { visibility: hidden; }
+            #printContainer, #printContainer * { visibility: visible; }
+            #printContainer { position: absolute; left: 0; top: 0; width: 100%; display: block !important; background: white; }
+            #appContainer { display: none !important; }
         }
     </style>
 </head>
@@ -56,6 +63,8 @@
     <div id="saveToast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[10001] px-6 py-3 rounded-full text-white font-bold shadow-2xl transition-all duration-300 opacity-0 translate-y-10 flex items-center gap-3 bg-slate-900 pointer-events-none">
         <i class="fa-solid fa-floppy-disk"></i> <span id="saveToastMsg">Saving...</span>
     </div>
+    
+    <div id="printContainer" class="hidden bg-white p-10"></div>
 
     <!-- AUTH OVERLAY -->
     <div id="authOverlay" class="fixed inset-0 z-50 bg-slate-50 flex items-center justify-center p-6">
@@ -74,7 +83,7 @@
                 <input type="password" id="setupPin" placeholder="Create Password" class="w-full p-3 text-center text-lg font-bold rounded-xl border border-slate-200 bg-white">
                 <button onclick="setupPassword()" class="w-full py-3 bg-medical-600 text-white font-bold rounded-xl shadow-lg">Set Password</button>
             </div>
-            <div id="loadingState" class="mt-4"><i class="fa-solid fa-circle-notch fa-spin text-medical-500 text-2xl"></i></div>
+            <div id="loadingState" class="mt-4"><i class="fa-solid fa-circle-notch spin-active text-medical-500 text-2xl"></i></div>
         </div>
     </div>
 
@@ -87,15 +96,30 @@
                     <h2 class="font-bold text-lg text-slate-800" id="headerWard">General Ward</h2>
                     <span id="roleBadge" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Resident View</span>
                 </div>
+                
+                <!-- CHIEF WARD SELECTOR (Replaces Change Ward Button for Chief) -->
+                <div id="chiefSourceSelector" class="hidden ml-2 animate-fade-in">
+                    <div class="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-lg px-2 py-1 shadow-sm">
+                        <i class="fa-solid fa-hospital text-orange-500 text-xs"></i>
+                        <select id="wardSelector" onchange="switchWardContext(this.value)" class="bg-transparent text-xs font-bold text-orange-700 outline-none cursor-pointer min-w-[120px]">
+                            <option value="">Loading Wards...</option>
+                        </select>
+                    </div>
+                </div>
             </div>
             <div class="flex items-center gap-2">
                  <div class="bg-slate-100 p-1 rounded-lg flex text-xs font-bold text-slate-500 mr-2 border border-slate-200">
                      <button onclick="switchView('grid')" id="viewBtnGrid" class="px-3 py-1.5 rounded-md bg-white shadow-sm text-medical-700 transition">Grid</button>
                      <button onclick="switchView('matrix')" id="viewBtnMatrix" class="px-3 py-1.5 rounded-md hover:bg-white/50 transition">Consults</button>
+                     <button onclick="switchView('handoff')" id="viewBtnHandoff" class="px-3 py-1.5 rounded-md hover:bg-white/50 transition">Sign-Out</button>
                      <button onclick="switchView('discharged')" id="viewBtnDischarged" class="px-3 py-1.5 rounded-md hover:bg-white/50 text-slate-400 hover:text-rose-500 transition">Discharged</button>
                  </div>
-                 <button onclick="changeWard()" class="bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold shadow-sm flex items-center gap-2 hover:bg-slate-50"><i class="fa-solid fa-right-left"></i> <span class="hidden sm:inline">Change Ward</span></button>
+                 
+                 <!-- Change Ward Button (Visible ONLY to Residents) -->
+                 <button onclick="changeWard()" id="btnChangeWard" class="bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold shadow-sm flex items-center gap-2 hover:bg-slate-50"><i class="fa-solid fa-right-left"></i> <span class="hidden sm:inline">Change Ward</span></button>
+                 
                  <button onclick="toggleSelectMode()" id="btnSelectMode" class="w-10 h-10 rounded-lg bg-white border border-slate-200 text-slate-500 flex items-center justify-center hover:text-medical-600 shadow-sm" title="Select Multiple"><i class="fa-regular fa-square-check"></i></button>
+                 <button onclick="openSettings()" class="w-10 h-10 rounded-lg bg-white border border-slate-200 text-slate-500 flex items-center justify-center hover:text-medical-600 shadow-sm"><i class="fa-solid fa-gear"></i></button>
                  <button onclick="manualRefresh()" id="btnRefresh" class="w-10 h-10 rounded-lg bg-slate-800 text-white flex items-center justify-center shadow-md hover:bg-slate-700"><i class="fa-solid fa-rotate"></i></button>
             </div>
         </header>
@@ -124,11 +148,48 @@
         </div>
 
         <main class="flex-1 overflow-y-auto p-4 md:p-6 relative" id="mainScroll">
+            <!-- EMPTY STATE FOR CHIEF -->
+            <div id="chiefEmptyState" class="hidden h-full flex flex-col items-center justify-center text-slate-400 pb-20">
+                <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4"><i class="fa-solid fa-hospital-user text-2xl text-slate-300"></i></div>
+                <p class="font-bold text-slate-500">Select a Ward to Round</p>
+                <p class="text-xs mt-1">Data from all residents will be aggregated here.</p>
+            </div>
+
             <div id="viewGrid" class="block"><div id="bedGrid" class="grid gap-3 pb-20 transition-all duration-300"></div></div>
             <div id="viewMatrix" class="hidden pb-20"><div id="matrixContainer" class="flex gap-4 overflow-x-auto pb-6 snap-x"></div></div>
+            
+            <div id="viewHandoff" class="hidden pb-20 max-w-4xl mx-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-bold text-slate-800">Sign-Out / Handoff Sheet</h3>
+                    <button onclick="printHandoff()" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-700"><i class="fa-solid fa-print mr-2"></i> Print / PDF</button>
+                </div>
+                <div id="handoffContent" class="bg-white p-8 shadow-sm border border-slate-200 rounded-xl font-mono text-xs"></div>
+            </div>
+            
             <div id="viewDischarged" class="hidden pb-20"><h3 class="text-lg font-bold text-slate-600 mb-4 flex items-center gap-2"><i class="fa-solid fa-box-archive"></i> Archived Patients</h3><div id="dischargedList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div></div>
         </main>
         <button onclick="openEditor(null)" class="fixed bottom-6 right-6 w-14 h-14 bg-slate-800 text-white rounded-full shadow-2xl flex items-center justify-center z-30 hover:scale-105 transition hover:bg-medical-600"><i class="fa-solid fa-plus text-xl"></i></button>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settingsModal" class="fixed inset-0 z-[70] hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl w-96 p-6 shadow-2xl animate-fade-in relative">
+            <button onclick="toggleElement('settingsModal', false)" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            <h3 class="font-bold text-lg mb-6 text-slate-800 flex items-center gap-2"><i class="fa-solid fa-user-gear"></i> Profile Settings</h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">New Password</label>
+                    <input type="password" id="setNewPwd" placeholder="Leave empty to keep current" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:border-medical-500">
+                </div>
+                <div id="usernameChangeSection">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Username (Database Name)</label>
+                    <input type="text" id="setNewName" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:border-medical-500 font-bold">
+                    <p class="text-[10px] text-orange-500 mt-1"><i class="fa-solid fa-circle-exclamation"></i> Changing this will rename your database.</p>
+                </div>
+                <button onclick="updateProfile()" id="btnUpdateProfile" class="w-full bg-slate-800 text-white py-3 rounded-xl font-bold mt-4 shadow-lg hover:bg-slate-700">Update Profile</button>
+            </div>
+        </div>
     </div>
 
     <div id="editorModal" class="fixed inset-0 z-50 hidden">
@@ -198,13 +259,7 @@
         const API_URL = "https://script.google.com/macros/s/AKfycbxZrOuiFqLzmaX9T7PN7xqwV-jvE80dBuNk4Gc3nV1K8-ZZw0YUEYDupPg_RKc1JUFB/exec";
         const STANDARD_UNITS = [{id: 'Cardio', icon: 'fa-heart-pulse'}, {id: 'Chest', icon: 'fa-lungs'}, {id: 'GI', icon: 'fa-burger'},{id: 'Neuro', icon: 'fa-brain'}, {id: 'Nephro', icon: 'fa-kidney'}, {id: 'ID', icon: 'fa-virus'}, {id: 'Hemato', icon: 'fa-droplet'}, {id: 'Onco', icon: 'fa-radiation'}, {id: 'Endo', icon: 'fa-cube'},{id: 'Rheumato', icon: 'fa-bone'}, {id: 'Skin', icon: 'fa-hand-dots'}];
         const COLORS = ['#ffffff', '#fecaca', '#fca5a5', '#f87171', '#fed7aa', '#fdba74', '#fb923c', '#fef08a', '#fde047', '#facc15', '#bbf7d0', '#86efac', '#4ade80', '#99f6e4', '#5eead4', '#2dd4bf', '#bfdbfe', '#93c5fd', '#60a5fa', '#ddd6fe', '#c4b5fd', '#a78bfa', '#fbcfe8', '#f9a8d4', '#f472b6', '#e2e8f0', '#cbd5e1', '#94a3b8'];
-        // NEW: Enhanced, high-contrast, shuffled palette
-        const TAG_COLORS = [
-            'bg-red-600', 'bg-blue-600', 'bg-amber-500', 'bg-teal-600', 
-            'bg-purple-600', 'bg-emerald-600', 'bg-rose-500', 'bg-cyan-600', 
-            'bg-indigo-600', 'bg-lime-600', 'bg-fuchsia-600', 'bg-sky-600', 
-            'bg-orange-600', 'bg-slate-600'
-        ];
+        const TAG_COLORS = ['bg-red-600', 'bg-blue-600', 'bg-amber-500', 'bg-teal-600', 'bg-purple-600', 'bg-emerald-600', 'bg-rose-500', 'bg-cyan-600', 'bg-indigo-600', 'bg-lime-600', 'bg-fuchsia-600', 'bg-sky-600', 'bg-orange-600', 'bg-slate-600'];
 
         let DB_NAME = new URLSearchParams(window.location.search).get('db');
         let ROLE = new URLSearchParams(window.location.search).get('role') || 'resident';
@@ -218,32 +273,30 @@
         let isSelectMode = false; let selectedIds = new Set();
         let autoSaveTimer = null; let refreshTimer = null;
         let toastTimer = null; 
+        
+        let chiefSelectedWard = ""; // Track currently viewed ward for Chiefs
 
         window.onload = () => {
             if(!DB_NAME) return document.body.innerHTML = "<div class='p-10 text-center font-bold'>Error: No Database Selected</div>";
             document.getElementById('loginDbName').innerText = DB_NAME;
-            document.getElementById('roleBadge').innerText = ROLE === 'chief' ? "Ward Chief (Aggregated)" : "Ward Resident";
-            if(ROLE === 'chief') document.getElementById('roleBadge').className = "text-[10px] font-bold text-orange-500 uppercase tracking-wider";
+            document.getElementById('roleBadge').innerText = ROLE === 'chief' ? "Ward Chief (View)" : "Ward Resident";
+            if(ROLE === 'chief') {
+                document.getElementById('roleBadge').className = "text-[10px] font-bold text-orange-500 uppercase tracking-wider";
+                document.getElementById('viewBtnHandoff').style.display = 'none'; 
+                document.getElementById('chiefSourceSelector').classList.remove('hidden');
+                // HIDE Change Ward Button for Chief (Unified Interface)
+                document.getElementById('btnChangeWard').classList.add('hidden');
+            }
             const savedGrid = localStorage.getItem('ward_grid_cols'); if(savedGrid) gridCols = parseInt(savedGrid);
             const savedBeds = localStorage.getItem('ward_total_beds'); if(savedBeds) { totalBeds = parseInt(savedBeds); document.getElementById('bedCountSlider').value = totalBeds; document.getElementById('bedCountLabel').innerText = totalBeds; }
             checkAuth(); renderColorPicker();
         };
 
-        // NEW: Avalanche Hash for strong visual separation of similar names
         function getOwnerColor(name) {
             if (!name) return 'bg-slate-500';
-            let hash = 0;
-            for (let i = 0; i < name.length; i++) {
-                // Mix: Multiply by prime and XOR
-                hash = Math.imul(31, hash) + name.charCodeAt(i) | 0;
-            }
-            // Avalanche mixing to spread sequential inputs (e.g. test1, test2)
-            hash = Math.imul(hash ^ (hash >>> 15), 0x85ebca6b);
-            hash = Math.imul(hash ^ (hash >>> 13), 0xc2b2ae35);
-            hash = hash ^ (hash >>> 16);
-            
-            const index = Math.abs(hash) % TAG_COLORS.length;
-            return TAG_COLORS[index];
+            let hash = 0; for (let i = 0; i < name.length; i++) { hash = Math.imul(31, hash) + name.charCodeAt(i) | 0; }
+            hash = Math.imul(hash ^ (hash >>> 15), 0x85ebca6b); hash = Math.imul(hash ^ (hash >>> 13), 0xc2b2ae35); hash = hash ^ (hash >>> 16);
+            return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length];
         }
 
         async function checkAuth() { try { const res = await fetch(`${API_URL}?action=auth_check_status&db=${DB_NAME}`); const json = await res.json(); document.getElementById('loadingState').classList.add('hidden'); if (json.status === 'setup_needed') document.getElementById('setupForm').classList.remove('hidden'); else document.getElementById('authForm').classList.remove('hidden'); } catch(e) { alert("Connection Error"); } }
@@ -257,7 +310,7 @@
                     document.getElementById('authOverlay').classList.add('hidden');
                     document.getElementById('appContainer').classList.remove('hidden');
                     await fetchData();
-                    changeWard(); 
+                    if (ROLE !== 'chief') changeWard(); 
                     startAutomation();
                 } else { alert("Incorrect Password"); }
             } catch(e) { alert("Login Error: " + e.message); } finally { btn.innerText = "Login"; }
@@ -265,52 +318,85 @@
         async function setupPassword() { const p = document.getElementById('setupPin').value; if(!p) return; await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'auth_set_password', db: DB_NAME, password: p}) }); location.reload(); }
 
         function startAutomation() {
-            // FIX: Clear existing timers before starting new ones to prevent stacking
             if (refreshTimer) clearInterval(refreshTimer);
             if (autoSaveTimer) clearInterval(autoSaveTimer);
-
-            // FIX: Only auto-refresh if editor is CLOSED AND we are NOT in select mode
-            refreshTimer = setInterval(() => { 
-                const editorClosed = document.getElementById('editorModal').classList.contains('hidden');
-                if(editorClosed && !isSelectMode) fetchData(true); 
-            }, 5000);
-            
+            refreshTimer = setInterval(() => { const editorClosed = document.getElementById('editorModal').classList.contains('hidden'); if(editorClosed && !isSelectMode) fetchData(true); }, 5000);
             autoSaveTimer = setInterval(() => { if(!document.getElementById('editorModal').classList.contains('hidden')) saveRecord(true); }, 30000);
         }
 
-        async function fetchData(silent = false) {
-            if(!silent) document.getElementById('btnRefresh').classList.add('animate-spin');
-            try {
-                if (ROLE === 'chief') {
-                    const listRes = await fetch(`${API_URL}?action=admin_list_users`);
-                    const listJson = await listRes.json();
-                    availableResidents = listJson.users.filter(u => u.role === 'resident').map(u => u.name);
-                    
-                    // --- FIX: Add 'requester' stamp to fetch so backend knows it's a Chief ---
-                    const promises = listJson.users.map(u => fetch(API_URL, { 
-                        method: 'POST', 
-                        headers: {"Content-Type": "text/plain;charset=utf-8"}, 
-                        body: JSON.stringify({
-                            action: 'read', 
-                            db: u.name, 
-                            password: PASSWORD, // The Chief's password
-                            requester: DB_NAME // STAMP: I am the Chief
-                        }) 
-                    }).then(r => r.json()).then(data => Array.isArray(data) ? data.map(rec => ({...processRecord(rec), owner: u.name})) : []).catch(() => []));
-                    // ------------------------------------------------------------------------
+        // NEW: Specific Ward Switching for Chiefs
+        function switchWardContext(ward) {
+            chiefSelectedWard = ward;
+            records = []; 
+            renderView(); 
+            if(ward) {
+                document.getElementById('chiefEmptyState').classList.add('hidden');
+                currentWard = ward; // Sync global ward
+                fetchData(); 
+            } else {
+                document.getElementById('chiefEmptyState').classList.remove('hidden');
+            }
+        }
 
-                    const results = await Promise.all(promises);
-                    records = results.flat();
-                } else {
+        async function fetchData(silent = false) {
+            if(!silent) document.getElementById('btnRefresh').classList.add('animate-spin', 'spin-active');
+            
+            try {
+                // --- CHIEF MODE: Ward-Based Fetch ---
+                if (ROLE === 'chief') {
+                    // 1. Initial Load: Get Ward List
+                    if (!chiefSelectedWard && document.getElementById('wardSelector').options.length <= 1) {
+                        const wardRes = await fetch(API_URL, { 
+                            method: 'POST', 
+                            headers: {"Content-Type": "text/plain;charset=utf-8"}, 
+                            body: JSON.stringify({ action: 'chief_get_ward_list', password: PASSWORD, requester: DB_NAME }) 
+                        });
+                        const wardJson = await wardRes.json();
+                        
+                        const sel = document.getElementById('wardSelector');
+                        sel.innerHTML = `<option value="">Select Ward...</option>` + 
+                            wardJson.wards.map(w => `<option value="${w}">${w}</option>`).join('');
+                        
+                        document.getElementById('chiefEmptyState').classList.remove('hidden');
+                    }
+                    
+                    // 2. Data Load: Fetch by Selected Ward
+                    if (chiefSelectedWard) {
+                        const res = await fetch(API_URL, { 
+                            method: 'POST', 
+                            headers: {"Content-Type": "text/plain;charset=utf-8"}, 
+                            body: JSON.stringify({ 
+                                action: 'chief_get_data_by_ward', 
+                                target_ward: chiefSelectedWard,
+                                password: PASSWORD, 
+                                requester: DB_NAME 
+                            }) 
+                        });
+                        const json = await res.json();
+                        // Backend already adds 'owner' field
+                        records = Array.isArray(json) ? json.map(rec => processRecord(rec)) : [];
+                        document.getElementById('chiefEmptyState').classList.add('hidden');
+                        
+                        // Populate resident list for modal logic
+                        const uniqueOwners = new Set(records.map(r => r.owner).filter(o => o));
+                        availableResidents = Array.from(uniqueOwners);
+                    }
+                } 
+                // --- RESIDENT MODE: Normal Fetch ---
+                else {
                     const res = await fetch(API_URL, { method: 'POST', headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify({action: 'read', db: DB_NAME, password: PASSWORD}) });
                     const json = await res.json();
                     if(json.error) throw new Error(json.error);
                     records = Array.isArray(json) ? json.map(processRecord) : [];
                 }
             } catch(e) { if(!silent) console.error("Fetch Error:", e); }
-            wards = new Set(["General Ward"]); records.forEach(r => { if(r.ward) wards.add(r.ward); });
+            
+            if (ROLE !== 'chief') {
+                wards = new Set(["General Ward"]); records.forEach(r => { if(r.ward) wards.add(r.ward); });
+            }
+            
             renderView();
-            if(!silent) document.getElementById('btnRefresh').classList.remove('animate-spin');
+            if(!silent) document.getElementById('btnRefresh').classList.remove('animate-spin', 'spin-active');
         }
 
         function processRecord(r) {
@@ -323,19 +409,30 @@
         function switchView(view) {
             document.getElementById('viewGrid').classList.toggle('hidden', view !== 'grid');
             document.getElementById('viewMatrix').classList.toggle('hidden', view !== 'matrix');
+            document.getElementById('viewHandoff').classList.toggle('hidden', view !== 'handoff');
             document.getElementById('viewDischarged').classList.toggle('hidden', view !== 'discharged');
+            
             document.getElementById('viewBtnGrid').className = view === 'grid' ? "px-3 py-1.5 rounded-md bg-white shadow-sm text-medical-700 transition" : "px-3 py-1.5 rounded-md hover:bg-white/50 transition";
             document.getElementById('viewBtnMatrix').className = view === 'matrix' ? "px-3 py-1.5 rounded-md bg-white shadow-sm text-medical-700 transition" : "px-3 py-1.5 rounded-md hover:bg-white/50 transition";
+            document.getElementById('viewBtnHandoff').className = view === 'handoff' ? "px-3 py-1.5 rounded-md bg-white shadow-sm text-slate-800 transition" : "px-3 py-1.5 rounded-md hover:bg-white/50 text-slate-500 transition";
             document.getElementById('viewBtnDischarged').className = view === 'discharged' ? "px-3 py-1.5 rounded-md bg-white shadow-sm text-rose-500 transition" : "px-3 py-1.5 rounded-md hover:bg-white/50 text-slate-400 hover:text-rose-500 transition";
+            
             renderView();
         }
         function renderView() { 
+            // Safety: If Chief has not selected a Ward, don't render grid
+            if(ROLE === 'chief' && !chiefSelectedWard) {
+                document.getElementById('bedGrid').innerHTML = "";
+                document.getElementById('matrixContainer').innerHTML = "";
+                return;
+            }
+
             if(!document.getElementById('viewGrid').classList.contains('hidden')) renderGrid();
             else if(!document.getElementById('viewMatrix').classList.contains('hidden')) renderMatrix();
-            else renderDischarged();
+            else if(!document.getElementById('viewHandoff').classList.contains('hidden')) renderHandoff();
+            else if(!document.getElementById('viewDischarged').classList.contains('hidden')) renderDischarged();
         }
 
-        // 1. GRID SYSTEM
         function toggleGridMenu() { document.getElementById('gridMenu').classList.toggle('hidden'); }
         function setGrid(cols) { gridCols = cols; localStorage.setItem('ward_grid_cols', cols); renderGrid(); toggleGridMenu(); }
         function updateBedCount(val) { totalBeds = parseInt(val); document.getElementById('bedCountLabel').innerText = val; localStorage.setItem('ward_total_beds', val); renderGrid(); }
@@ -344,12 +441,15 @@
             const grid = document.getElementById('bedGrid');
             grid.className = `grid gap-3 pb-20 grid-${gridCols}`; grid.innerHTML = "";
             document.getElementById('headerWard').innerText = currentWard;
-            const activeRecords = records.filter(r => r.ward === currentWard && !r.is_discharged);
+            
+            // For Chief, we display all records fetched (which are already filtered by ward)
+            const activeRecords = records.filter(r => !r.is_discharged);
+            // If Resident, filter further by currentWard (local filtering)
+            const displayRecords = ROLE === 'chief' ? activeRecords : activeRecords.filter(r => r.ward === currentWard);
             
             for(let i=1; i<=totalBeds; i++) {
-                const occupants = activeRecords.filter(r => parseInt(r.bed_number) === i);
+                const occupants = displayRecords.filter(r => parseInt(r.bed_number) === i);
                 if (occupants.length === 0) {
-                    // FIX: Updated click handler to prevent opening editor on vacant beds when selecting
                     grid.innerHTML += `<div onclick="handleVacantClick(${i})" class="bed-card vacant group"><span class="text-3xl font-bold text-slate-300 group-hover:text-medical-400">${i}</span><span class="text-[10px] font-bold text-slate-300 uppercase mt-1 group-hover:text-medical-500">Vacant</span></div>`;
                 } else {
                     occupants.forEach(r => {
@@ -360,15 +460,10 @@
                         let todoHtml = "";
                         if (pendingTodos.length > 0) {
                             todoHtml = `<div class="mt-auto pt-2 border-t border-slate-100/50 flex gap-1 overflow-hidden">`;
-                            pendingTodos.slice(0, 3).forEach(t => { 
-                                todoHtml += `<div class="text-[9px] px-1.5 py-0.5 bg-white border border-rose-200 text-rose-600 rounded shadow-sm font-bold truncate max-w-[80px]">${t.text}</div>`; 
-                            });
+                            pendingTodos.slice(0, 3).forEach(t => { todoHtml += `<div class="text-[9px] px-1.5 py-0.5 bg-white border border-rose-200 text-rose-600 rounded shadow-sm font-bold truncate max-w-[80px]">${t.text}</div>`; });
                             if (pendingTodos.length > 3) todoHtml += `<div class="text-[9px] px-1.5 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded font-bold">+${pendingTodos.length - 3}</div>`;
                             todoHtml += `</div>`;
                         }
-                        
-                        // FIX: Dynamic Owner Color in Grid
-                        // CHANGE: Moved to bottom-right (bottom-0 right-0) and updated radius (rounded-tl-lg)
                         const tagColor = getOwnerColor(r.owner);
                         const ownerTag = (ROLE === 'chief' && r.owner) ? `<div class="absolute bottom-0 right-0 ${tagColor} text-white text-[9px] px-2 py-0.5 rounded-tl-lg z-10 font-bold opacity-90 shadow-sm">${(r.owner||'').substr(0,6)}</div>` : '';
                         
@@ -377,83 +472,147 @@
                 }
             }
         }
+        function handleVacantClick(i) { if(isSelectMode) return; openEditor(null, i); }
 
-        // FIX: Helper for vacant bed clicks
-        function handleVacantClick(i) {
-            if(isSelectMode) return; // Do nothing in select mode
-            openEditor(null, i);
+        function renderMatrix() { 
+            const container = document.getElementById('matrixContainer'); 
+            container.innerHTML = ""; 
+            const displayRecords = ROLE === 'chief' ? records.filter(r => !r.is_discharged) : records.filter(r => r.ward === currentWard && !r.is_discharged);
+            const usedUnits = new Set(); 
+            displayRecords.forEach(r => r.consult_units.forEach(u => usedUnits.add(u.id))); 
+            const sortedUnits = Array.from(usedUnits).sort(); 
+            
+            if(sortedUnits.length === 0) { container.innerHTML = "<div class='p-10 text-slate-400 italic'>No active consultations.</div>"; return; } 
+            
+            sortedUnits.forEach(unit => { 
+                const patients = displayRecords.filter(r => r.consult_units.some(u => u.id === unit)); 
+                let html = `<div class="matrix-col snap-center shrink-0"><h4 class="font-bold text-sm text-slate-700 uppercase mb-3 flex items-center gap-2"><i class="fa-solid fa-user-md text-medical-500"></i> ${unit} <span class="bg-slate-200 text-slate-600 px-1.5 rounded-md text-[10px]">${patients.length}</span></h4><div class="space-y-2">`; 
+                patients.forEach(r => { 
+                    const isSelected = selectedIds.has(r.id);
+                    const selClass = isSelected ? 'ring-2 ring-medical-500 border-medical-500 bg-medical-50' : 'border-slate-200 hover:border-medical-400';
+                    const tagColor = getOwnerColor(r.owner);
+                    const ownerTag = (ROLE === 'chief' && r.owner) ? `<div class="absolute bottom-0 right-0 ${tagColor} text-white text-[8px] px-1.5 py-0.5 rounded-tl-lg rounded-br-lg shadow-sm z-10">${(r.owner||'').substr(0,4)}</div>` : '';
+                    html += `<div onclick="handleItemClick('${r.id}', ${r.bed_number})" class="relative overflow-hidden bg-white p-3 rounded-lg border shadow-sm cursor-pointer transition ${selClass}">${ownerTag}<div class="flex justify-between items-start"><span class="font-bold text-sm text-slate-800">Bed ${r.bed_number}</span></div><div class="flex justify-between mt-1"><span class="text-[10px] text-slate-400">${r.hn||''}</span></div><div class="text-xs text-slate-600 truncate mt-1">${r.name}</div></div>`; 
+                }); 
+                html += `</div></div>`; 
+                container.innerHTML += html; 
+            }); 
+        }
+
+        function renderHandoff() {
+            const container = document.getElementById('handoffContent');
+            const displayRecords = ROLE === 'chief' ? records.filter(r => !r.is_discharged) : records.filter(r => r.ward === currentWard && !r.is_discharged);
+            const activeRecords = displayRecords.sort((a,b) => parseInt(a.bed_number) - parseInt(b.bed_number));
+            if(activeRecords.length === 0) { container.innerHTML = "No patients."; return; }
+
+            let html = `
+            <div class="mb-4 pb-4 border-b border-slate-300 flex justify-between">
+                <div><h1 class="text-xl font-bold">Internal Medicine Sign-Out</h1><p>Ward: ${currentWard} | Date: ${new Date().toLocaleDateString()}</p></div>
+                <div class="text-right"><p>Total: ${activeRecords.length}</p></div>
+            </div>
+            <table class="w-full text-left border-collapse">
+                <thead><tr class="border-b-2 border-slate-300 text-slate-600 uppercase text-[10px]"><th class="py-2 w-12">Bed</th><th class="py-2 w-32">Patient</th><th class="py-2">Active Issues / Plan</th><th class="py-2 w-32">To-Do</th></tr></thead>
+                <tbody>`;
+            
+            activeRecords.forEach(r => {
+                const todos = r.todo_list.filter(t => !t.done).map(t => `• ${t.text}`).join('<br>');
+                html += `
+                <tr class="border-b border-slate-100 py-2 align-top">
+                    <td class="py-3 font-bold text-lg">${r.bed_number}</td>
+                    <td class="py-3"><div class="font-bold">${r.name}</div><div class="text-slate-500">${r.hn}</div></td>
+                    <td class="py-3 whitespace-pre-wrap leading-relaxed text-slate-700">${r.details || '-'}</td>
+                    <td class="py-3 text-rose-600 font-bold">${todos}</td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
+            container.innerHTML = html;
+        }
+
+        function printHandoff() { 
+            document.getElementById('printContainer').innerHTML = document.getElementById('handoffContent').innerHTML;
+            window.print(); 
+        }
+
+        function renderDischarged() {
+            const list = document.getElementById('dischargedList'); list.innerHTML = "";
+            const archived = records.filter(r => r.is_discharged);
+            if (archived.length === 0) { list.innerHTML = "<div class='col-span-full text-center p-10 text-slate-400 italic'>No archived records found.</div>"; return; }
+            archived.forEach(r => {
+                const dateStr = r.updated_at ? new Date(r.updated_at).toLocaleDateString() : 'N/A';
+                const isSelected = selectedIds.has(r.id);
+                const selClass = isSelected ? 'ring-2 ring-medical-500 border-medical-500 bg-medical-50' : 'border-slate-200 hover:border-medical-400';
+                list.innerHTML += `
+                <div class="bg-white p-4 rounded-xl border shadow-sm flex justify-between items-center cursor-pointer transition ${selClass}" onclick="handleItemClick('${r.id}', null)">
+                    <div>
+                        <h4 class="font-bold text-slate-800">${r.name}</h4>
+                        <p class="text-xs text-slate-500">HN: ${r.hn} • Ward: ${r.ward}</p>
+                        <p class="text-[10px] text-slate-400 mt-1">Archived: ${dateStr}</p>
+                    </div>
+                    <button onclick="restorePatient('${r.id}', event)" class="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-200 transition">Restore</button>
+                </div>`;
+            });
+        }
+
+        // --- SETTINGS & PROFILE (NEW) ---
+        function openSettings() {
+            document.getElementById('setNewName').value = DB_NAME;
+            document.getElementById('setNewPwd').value = "";
+            toggleElement('settingsModal', true);
+            // Chiefs cannot rename themselves easily without breaking links for everyone else, so maybe hide renaming for Chiefs or warn heavily
+            if (ROLE === 'chief') {
+               document.getElementById('usernameChangeSection').classList.add('opacity-50', 'pointer-events-none');
+            }
+        }
+        
+        async function updateProfile() {
+            const newPwd = document.getElementById('setNewPwd').value;
+            const newName = document.getElementById('setNewName').value.trim();
+            
+            if(!newName) return alert("Username cannot be empty");
+            if(newName !== DB_NAME && !confirm("WARNING: Changing your username will rename your database. You will need to use the NEW name to login next time. Continue?")) return;
+            
+            const btn = document.getElementById('btnUpdateProfile');
+            btn.innerText = "Updating..."; btn.disabled = true;
+
+            try {
+                const res = await fetch(API_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify({
+                        action: 'auth_update_profile', 
+                        db: DB_NAME, 
+                        password: PASSWORD,
+                        newPassword: newPwd,
+                        newDbName: newName
+                    }) 
+                });
+                const json = await res.json();
+                
+                if (json.status === 'success' || json.status === 'renamed') {
+                    alert("Profile Updated. Please login again.");
+                    window.location.href = "index.html"; // Return to portal
+                } else {
+                    alert(json.error || "Update Failed");
+                }
+            } catch(e) { alert("Network Error"); }
+            finally { btn.innerText = "Update Profile"; btn.disabled = false; }
         }
 
         function toggleSelectMode() { 
-            isSelectMode = !isSelectMode; 
-            if(!isSelectMode) selectedIds.clear(); 
+            isSelectMode = !isSelectMode; if(!isSelectMode) selectedIds.clear(); 
             document.getElementById('selectionToolbar').classList.toggle('hidden', !isSelectMode); 
             document.getElementById('btnSelectMode').classList.toggle('text-medical-600', isSelectMode); 
-            
-            // FIX: Refresh the ENTIRE view so Matrix/Discharged lists also update visually
             renderView(); 
         }
-
-        // FIX: Global Item Click Handler
-        function handleItemClick(id, bedNum) { 
-            if (isSelectMode) { 
-                if(selectedIds.has(id)) selectedIds.delete(id); 
-                else selectedIds.add(id); 
-                document.getElementById('selectCount').innerText = selectedIds.size; 
-                renderView(); // Re-render to show selection state in all views
-            } else { 
-                openEditor(id, bedNum); 
-            } 
-        }
+        function handleItemClick(id, bedNum) { if (isSelectMode) { if(selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id); document.getElementById('selectCount').innerText = selectedIds.size; renderView(); } else { openEditor(id, bedNum); } }
 
         async function deleteBatch() { 
             if(!confirm(`Delete ${selectedIds.size} items?`)) return; 
-            
-            // FIX: Stop automation to prevent stale data fetch during deletion
-            clearInterval(refreshTimer);
-            clearInterval(autoSaveTimer);
-
-            // Group by Owner
-            const batches = {};
-            const localDeleteIds = new Set();
-
-            selectedIds.forEach(id => {
-                const r = records.find(x => x.id === id);
-                if (r) {
-                    const target = (ROLE === 'chief' && r.owner) ? r.owner : DB_NAME;
-                    if (!batches[target]) batches[target] = [];
-                    batches[target].push(id);
-                    localDeleteIds.add(id);
-                }
-            });
-
-            // Optimistic Update
-            records = records.filter(r => !localDeleteIds.has(r.id));
-            renderView(); 
-            toggleSelectMode();
-
-            // Execute Requests Parallelly
-            const requests = Object.entries(batches).map(([targetDb, ids]) => {
-                return fetch(API_URL, { 
-                    method: 'POST', 
-                    body: JSON.stringify({
-                        action: 'delete', 
-                        db: targetDb, 
-                        requester: DB_NAME, // Identify who is deleting
-                        password: PASSWORD, 
-                        ids: ids
-                    }) 
-                });
-            });
-
-            try {
-                await Promise.all(requests);
-                showToast("Batch delete complete", true);
-            } catch(e) {
-                alert("Some items failed to delete.");
-            } finally {
-                startAutomation();
-            }
+            clearInterval(refreshTimer); clearInterval(autoSaveTimer);
+            const batches = {}; const localDeleteIds = new Set();
+            selectedIds.forEach(id => { const r = records.find(x => x.id === id); if (r) { const target = (ROLE === 'chief' && r.owner) ? r.owner : DB_NAME; if (!batches[target]) batches[target] = []; batches[target].push(id); localDeleteIds.add(id); }});
+            records = records.filter(r => !localDeleteIds.has(r.id)); renderView(); toggleSelectMode();
+            const requests = Object.entries(batches).map(([targetDb, ids]) => fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: targetDb, requester: DB_NAME, password: PASSWORD, ids: ids}) }));
+            try { await Promise.all(requests); showToast("Batch delete complete", true); } catch(e) { alert("Some items failed."); } finally { startAutomation(); }
         }
 
         function exportBatch() {
@@ -467,99 +626,39 @@
             toggleSelectMode();
         }
 
-        function renderMatrix() { 
-            const container = document.getElementById('matrixContainer'); 
-            container.innerHTML = ""; 
-            const activeRecords = records.filter(r => r.ward === currentWard && !r.is_discharged); 
-            const usedUnits = new Set(); 
-            activeRecords.forEach(r => r.consult_units.forEach(u => usedUnits.add(u.id))); 
-            const sortedUnits = Array.from(usedUnits).sort(); 
-            
-            if(sortedUnits.length === 0) { 
-                container.innerHTML = "<div class='p-10 text-slate-400 italic'>No active consultations.</div>"; 
-                return; 
-            } 
-            
-            sortedUnits.forEach(unit => { 
-                const patients = activeRecords.filter(r => r.consult_units.some(u => u.id === unit)); 
-                let html = `<div class="matrix-col snap-center shrink-0"><h4 class="font-bold text-sm text-slate-700 uppercase mb-3 flex items-center gap-2"><i class="fa-solid fa-user-md text-medical-500"></i> ${unit} <span class="bg-slate-200 text-slate-600 px-1.5 rounded-md text-[10px]">${patients.length}</span></h4><div class="space-y-2">`; 
-                patients.forEach(r => { 
-                    // FIX: Visual selection indicator
-                    const isSelected = selectedIds.has(r.id);
-                    const selClass = isSelected ? 'ring-2 ring-medical-500 border-medical-500 bg-medical-50' : 'border-slate-200 hover:border-medical-400';
-                    
-                    // FIX: Dynamic Owner Color in Matrix
-                    // CHANGE: Moved to bottom-right (bottom-0 right-0) and updated radius (rounded-tl-lg rounded-br-lg)
-                    const tagColor = getOwnerColor(r.owner);
-                    const ownerTag = (ROLE === 'chief' && r.owner) ? `<div class="absolute bottom-0 right-0 ${tagColor} text-white text-[8px] px-1.5 py-0.5 rounded-tl-lg rounded-br-lg shadow-sm z-10">${(r.owner||'').substr(0,4)}</div>` : '';
-
-                    // FIX: Added 'relative overflow-hidden' to card, removed inline ownerTag from header
-                    html += `<div onclick="handleItemClick('${r.id}', ${r.bed_number})" class="relative overflow-hidden bg-white p-3 rounded-lg border shadow-sm cursor-pointer transition ${selClass}">
-                    ${ownerTag}
-                    <div class="flex justify-between items-start"><span class="font-bold text-sm text-slate-800">Bed ${r.bed_number}</span></div><div class="flex justify-between mt-1"><span class="text-[10px] text-slate-400">${r.hn||''}</span></div><div class="text-xs text-slate-600 truncate mt-1">${r.name}</div></div>`; 
-                }); 
-                html += `</div></div>`; 
-                container.innerHTML += html; 
-            }); 
-        }
-
         function openEditor(id, bedNum) {
             toggleElement('editorModal', true); editingId = id; currentTodos = []; activeConsults = []; currentDischarged = false; originalOwner = null;
             const sel = document.getElementById('editBed'); sel.innerHTML = ""; for(let i=1; i<=100; i++) sel.innerHTML += `<option value="${i}">${i}</option>`;
-            
             if (id) {
-                const r = records.find(x => x.id === id); 
-                originalOwner = r.owner;
-                
-                // --- FIX: Safely populate resident selector ---
+                const r = records.find(x => x.id === id); originalOwner = r.owner;
                 if(ROLE === 'chief') { 
-                    const resSel = document.getElementById('residentSelect'); 
-                    document.getElementById('residentSelectorDiv').classList.remove('hidden'); 
-                    
-                    // Add standard list
+                    const resSel = document.getElementById('residentSelect'); document.getElementById('residentSelectorDiv').classList.remove('hidden'); 
                     let opts = availableResidents.map(r => `<option value="${r}">${r}</option>`);
-                    
-                    // CRITICAL FIX: If current owner is NOT in standard list (e.g. is Admin/Chief), add them dynamically
-                    // This prevents "Default to first item" bug which changes ownership silently
-                    if (originalOwner && !availableResidents.includes(originalOwner)) {
-                        opts.unshift(`<option value="${originalOwner}">${originalOwner} (Current)</option>`);
-                    }
-                    resSel.innerHTML = opts.join('');
-                    resSel.value = originalOwner;
+                    if (originalOwner && !availableResidents.includes(originalOwner)) opts.unshift(`<option value="${originalOwner}">${originalOwner}</option>`);
+                    resSel.innerHTML = opts.join(''); resSel.value = originalOwner;
                 }
-                // ----------------------------------------------
-
-                document.getElementById('editorTitle').innerText = "Edit Patient"; 
-                document.getElementById('editBed').value = r.bed_number; 
-                document.getElementById('editorBedBadge').innerText = `#${r.bed_number}`;
-                document.getElementById('editHN').value = r.hn; 
-                document.getElementById('editName').value = r.name; 
-                setDetails(r.details);
-                activeConsults = r.consult_units ? JSON.parse(JSON.stringify(r.consult_units)) : []; 
-                currentTodos = r.todo_list ? JSON.parse(JSON.stringify(r.todo_list)) : [];
-                currentDischarged = !!r.is_discharged; 
-                setActiveColor(r.color_id); 
-                toggleElement('btnDelete', true);
+                document.getElementById('editorTitle').innerText = "Edit Patient"; document.getElementById('editBed').value = r.bed_number; document.getElementById('editorBedBadge').innerText = `#${r.bed_number}`;
+                document.getElementById('editHN').value = r.hn; document.getElementById('editName').value = r.name; setDetails(r.details);
+                activeConsults = r.consult_units ? JSON.parse(JSON.stringify(r.consult_units)) : []; currentTodos = r.todo_list ? JSON.parse(JSON.stringify(r.todo_list)) : [];
+                currentDischarged = !!r.is_discharged; setActiveColor(r.color_id); toggleElement('btnDelete', true);
             } else {
-                // New Patient
                 if(ROLE === 'chief') { 
-                    const resSel = document.getElementById('residentSelect'); 
-                    document.getElementById('residentSelectorDiv').classList.remove('hidden'); 
+                    const resSel = document.getElementById('residentSelect'); document.getElementById('residentSelectorDiv').classList.remove('hidden'); 
                     resSel.innerHTML = availableResidents.map(r => `<option value="${r}">${r}</option>`).join('');
-                    originalOwner = resSel.value; // Default to first resident
+                    if(availableResidents.length > 0) originalOwner = availableResidents[0];
                 }
-
                 document.getElementById('editorTitle').innerText = "Admit Patient"; document.getElementById('editBed').value = bedNum || 1; document.getElementById('editorBedBadge').innerText = `#${bedNum||1}`;
                 document.getElementById('editHN').value = ""; document.getElementById('editName').value = ""; setDetails(""); setActiveColor('#ffffff'); toggleElement('btnDelete', false);
                 currentTodos = [{text: "", done: false}, {text: "", done: false}];
             }
             renderConsults(); renderTodos(); updateDischargeBtn();
         }
+
         function closeEditor() { toggleElement('editorModal', false); editingId = null; }
         function changeBedInEditor() { document.getElementById('editorBedBadge').innerText='#'+document.getElementById('editBed').value; saveRecord(true); }
         function setDetails(text) { document.getElementById('editDetailsDesktop').value = text || ""; document.getElementById('editDetailsMobile').value = text || ""; document.getElementById('fullscreenEditor').value = text || ""; }
         function syncDetails(el) { const val = el.value; if(el.id !== 'editDetailsDesktop') document.getElementById('editDetailsDesktop').value = val; if(el.id !== 'editDetailsMobile') document.getElementById('editDetailsMobile').value = val; if(el.id !== 'fullscreenEditor') document.getElementById('fullscreenEditor').value = val; }
-        function renderConsults() { const div = document.getElementById('consultContainer'); div.innerHTML = ""; const allUnits = [...STANDARD_UNITS]; activeConsults.forEach(ac => { if (!allUnits.find(u => u.id === ac.id)) allUnits.push(ac); }); allUnits.forEach(u => { const isActive = activeConsults.find(ac => ac.id === u.id); div.innerHTML += `<div onclick="toggleConsult('${u.id}', '${u.icon}')" class="consult-chip cursor-pointer select-none ${isActive?'active':'inactive'}"><i class="fa-solid ${u.icon}"></i> ${u.id}</div>`; }); }
+        function renderConsults() { const div = document.getElementById('consultContainer'); div.innerHTML = ""; const allUnits = [...STANDARD_UNITS]; activeConsults.forEach(ac => { if (!allUnits.find(u => u.id === ac.id)) allUnits.push(ac); }); allUnits.forEach(u => { const isActive = activeConsults.find(ac => ac.id === u.id); div.innerHTML += `<div onclick="toggleConsult('${u.id}', '${u.icon}')" class="consult-chip ${isActive?'active':'inactive'}"><i class="fa-solid ${u.icon}"></i> ${u.id}</div>`; }); }
         function toggleConsult(id, icon) { const idx = activeConsults.findIndex(c => c.id === id); if(idx > -1) activeConsults.splice(idx, 1); else activeConsults.push({id, icon}); renderConsults(); }
         function addCustomConsult() { const val = document.getElementById('customConsult').value.trim(); if(val) { activeConsults.push({id: val, icon: 'fa-user-md'}); document.getElementById('customConsult').value = ""; renderConsults(); } }
         function renderTodos() { const div = document.getElementById('todoContainer'); div.innerHTML = ""; currentTodos.forEach((t, i) => { div.innerHTML += `<div class="flex items-center gap-2 p-2 bg-white rounded border ${t.done ? 'border-green-200 bg-green-50' : 'border-slate-200'}"><input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo(${i})" class="accent-green-500"><input type="text" value="${t.text}" placeholder="Add task..." list="taskSuggestions" onblur="currentTodos[${i}].text=this.value" id="todoInput-${i}" class="flex-1 bg-transparent outline-none text-xs ${t.done ? 'line-through text-green-600' : 'text-slate-700'}"><i class="fa-solid fa-xmark text-slate-300 cursor-pointer" onclick="removeTodo(${i})"></i></div>`; }); }
@@ -569,7 +668,7 @@
         function renderColorPicker() { document.getElementById('colorContainer').innerHTML = COLORS.map(c => `<div class="color-dot bg-[${c}] shadow-sm" style="background-color: ${c}" onclick="setActiveColor('${c}')" data-col="${c}"></div>`).join(''); }
         function setActiveColor(c) { document.querySelectorAll('.color-dot').forEach(el => el.classList.toggle('selected', el.dataset.col === c)); document.getElementById('colorContainer').dataset.selected = c; }
         
-        // FIXED WARD SELECTOR GLOBAL FUNCTION
+        // --- CORE ACTIONS ---
         function changeWard() {
             toggleElement('wardModal', true);
             document.getElementById('wardList').innerHTML = Array.from(wards).map(w => `
@@ -584,117 +683,90 @@
         function createNewWard() { const n = document.getElementById('newWardName').value.trim(); if(n) { currentWard = n; wards.add(n); changeWard(); renderView(); }}
         function selectWard(n) { currentWard = n; toggleElement('wardModal', false); renderView(); }
         
-        // FIX: Dedicated toast helpers for consistent animation
         function showToast(msg, isSuccess = false) {
-            const toast = document.getElementById('saveToast');
-            const toastMsg = document.getElementById('saveToastMsg');
-            
-            clearTimeout(toastTimer); // Clear pending hides
-            
-            toastMsg.innerText = msg;
-            // Set to visible state
-            toast.className = `fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[10001] px-6 py-3 rounded-full text-white font-bold shadow-2xl transition-all duration-300 flex items-center gap-3 translate-y-0 opacity-100 pointer-events-none ${isSuccess ? 'bg-emerald-600' : 'bg-slate-900'}`;
-            
-            if (isSuccess) {
-                toastTimer = setTimeout(hideToast, 2000);
-            }
-        }
-
-        function hideToast() {
-            const toast = document.getElementById('saveToast');
-            // Preserve the background color currently on the element
-            const bgClass = toast.classList.contains('bg-emerald-600') ? 'bg-emerald-600' : 'bg-slate-900';
-            
-            // Overwrite class to hidden state
-            toast.className = `fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[10001] px-6 py-3 rounded-full text-white font-bold shadow-2xl transition-all duration-300 flex items-center gap-3 translate-y-10 opacity-0 pointer-events-none ${bgClass}`;
+            const toast = document.getElementById('saveToast'); const toastMsg = document.getElementById('saveToastMsg'); clearTimeout(toastTimer);
+            toastMsg.innerText = msg; toast.className = `fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[10001] px-6 py-3 rounded-full text-white font-bold shadow-2xl transition-all duration-300 flex items-center gap-3 translate-y-0 opacity-100 pointer-events-none ${isSuccess ? 'bg-emerald-600' : 'bg-slate-900'}`;
+            if (isSuccess) toastTimer = setTimeout(() => { const bgClass = toast.classList.contains('bg-emerald-600') ? 'bg-emerald-600' : 'bg-slate-900'; toast.className = `fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[10001] px-6 py-3 rounded-full text-white font-bold shadow-2xl transition-all duration-300 flex items-center gap-3 translate-y-10 opacity-0 pointer-events-none ${bgClass}`; }, 2000);
         }
 
         async function saveRecord(silent = false) {
             const btn = document.getElementById('btnSave'); 
-            if(!silent) {
-                btn.innerText = "Saving...";
-                showToast("Saving...");
-            }
+            if(!silent) { btn.innerText = "Saving..."; showToast("Saving..."); }
             
-            // --- FIX START: EMPTY RECORD CHECK ---
             const targetBed = document.getElementById('editBed').value; 
             const targetName = document.getElementById('editName').value.trim();
-            const targetHN = document.getElementById('editHN').value.trim();
             const detailsVal = document.getElementById('editDetailsDesktop').value.trim();
             const validTodos = currentTodos.filter(t => t.text.trim() !== "");
             
-            // If it is an AUTO-SAVE (silent) and the main fields are EMPTY, do not save.
-            // This prevents creating "Phantom" admissions when a user just clicks a bed and waits.
-            if (silent && !editingId && !targetName && !targetHN && !detailsVal && activeConsults.length === 0 && validTodos.length === 0) {
-                console.log("Skipping auto-save: Empty new record.");
-                return;
-            }
-            // --- FIX END ---
-
+            if (silent && !editingId && !targetName && !detailsVal && activeConsults.length === 0 && validTodos.length === 0) return;
+            
             const conflict = records.find(r => r.id !== editingId && r.ward === currentWard && !r.is_discharged && (r.bed_number == targetBed || (targetName && r.name === targetName)));
+            if (conflict && !silent) { if(!confirm(`CONFLICT DETECTED!\nBed ${conflict.bed_number} occupied by ${conflict.name}.\nOverwrite?`)) { btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`; return; } }
             
-            // --- FIX: Silent Conflict Safety ---
-            if (conflict) {
-                if (silent) {
-                    // Abort silent save to avoid overwriting conflicting data
-                    console.warn("Auto-save skipped due to conflict.");
-                    return; 
-                } else {
-                    if(!confirm(`CONFLICT DETECTED!\nBed ${conflict.bed_number} occupied by ${conflict.name}.\nOverwrite?`)) { 
-                        btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`; 
-                        hideToast();
-                        return; 
-                    }
-                }
+            let name = targetName; if(!name) { const count = records.length + 1; name = `Patient_${String(count).padStart(3, '0')}`; }
+            
+            // Current State from Editor
+            const currentRecord = records.find(r => r.id === editingId);
+            const clientLastUpdated = currentRecord ? currentRecord.updated_at : null;
+
+            const p = { 
+                id: editingId || 'rec_' + Date.now(), 
+                bed_number: targetBed, hn: document.getElementById('editHN').value, name: name, ward: currentWard, 
+                details: detailsVal, consult_units: JSON.stringify(activeConsults), 
+                color_id: document.getElementById('colorContainer').dataset.selected || '#ffffff', 
+                todo_list: JSON.stringify(validTodos), is_discharged: currentDischarged,
+                last_updated_client: clientLastUpdated // Protocol C: Send timestamp
+            };
+
+            let targetDB = DB_NAME;
+            if (ROLE === 'chief') { 
+                // Ensure we save to the currently selected Chief View DB or the Resident selector in modal
+                targetDB = document.getElementById('residentSelect').value || chiefSelectedWard; 
+                if(!targetDB) { alert("Please select a resident."); return; } 
             }
             
-            let name = targetName; 
-            if(!name) { const count = records.length + 1; name = `Patient_${String(count).padStart(3, '0')}`; }
-            
-            const p = { id: editingId || 'rec_' + Date.now(), bed_number: targetBed, hn: targetHN, name: name, ward: currentWard, details: detailsVal, consult_units: JSON.stringify(activeConsults), color_id: document.getElementById('colorContainer').dataset.selected || '#ffffff', todo_list: JSON.stringify(validTodos), is_discharged: currentDischarged };
-            let targetDB = DB_NAME;
-            if (ROLE === 'chief') { targetDB = document.getElementById('residentSelect').value; if(!targetDB) { alert("Please select a resident."); return; } if(originalOwner && originalOwner !== targetDB) { await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: originalOwner, password: PASSWORD, requester: DB_NAME, id: p.id}) }); } }
             const payload = { action: 'save', db: targetDB, requester: DB_NAME, password: PASSWORD, ...p };
             
-            // Update Local State immediately
             if (ROLE !== 'chief') { 
                 const clean = {...p, consult_units: activeConsults, todo_list: validTodos}; 
                 const idx = records.findIndex(r => r.id === p.id); 
                 if(idx > -1) records[idx] = clean; else records.push(clean); 
-                if(!silent) renderView(); 
-                // Update editingId so subsequent auto-saves know it's an existing record
-                editingId = p.id; 
+                if(!silent) renderView(); editingId = p.id; 
             }
-
             if(!silent && !document.getElementById('fullscreenOverlay').classList.contains('hidden')) {} else if (!silent) { closeEditor(); }
             
-            await fetch(API_URL, { method: 'POST', headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify(payload) });
-            if(ROLE === 'chief') fetchData(true);
-            
-            if(!silent) {
-                btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`;
-                showToast("Saved Successfully", true);
+            const res = await fetch(API_URL, { method: 'POST', headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify(payload) });
+            const json = await res.json();
+
+            // --- PROTOCOL C: HANDLING CONFLICTS ---
+            if (json.status === 'conflict') {
+                if(confirm(`DATA CONFLICT!\n\nThe server has newer data for this patient.\nYour changes: ${p.details.substring(0,20)}...\nServer data: ${json.serverData.details.substring(0,20)}...\n\nClick OK to OVERWRITE server (force save).\nClick Cancel to DISCARD your changes and reload.`)) {
+                     // Force Save
+                     payload.force = true;
+                     await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+                     showToast("Forced Update Success", true);
+                } else {
+                    // Discard and Reload
+                    fetchData();
+                    alert("Reloaded latest data.");
+                }
+            } else if (json.status === 'success') {
+                if (ROLE === 'chief') fetchData(true);
+                else {
+                     const idx = records.findIndex(r => r.id === p.id); 
+                     if(idx > -1) records[idx].updated_at = json.updated_at;
+                }
+                if(!silent) { btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`; showToast("Saved Successfully", true); }
             }
         }
         
         async function deleteRecord() { 
             if(!confirm("Permanently delete?")) return; 
-            
-            // --- FIX START: STOP AUTO-SAVE ---
-            // Stop the auto-save timer immediately to prevent race conditions
             clearInterval(autoSaveTimer);
-            // --- FIX END ---
-
             records = records.filter(r => r.id !== editingId); 
-            const targetDB = (ROLE === 'chief' && originalOwner) ? originalOwner : DB_NAME; 
-            const idToDelete = editingId;
-            
-            renderView(); 
-            closeEditor(); 
-            
+            const targetDB = (ROLE === 'chief' && originalOwner) ? originalOwner : DB_NAME; const idToDelete = editingId;
+            renderView(); closeEditor(); 
             await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: targetDB, requester: DB_NAME, password: PASSWORD, id: idToDelete}) });
-            
-            // Restart automation
             startAutomation();
         }
 
@@ -704,48 +776,16 @@
         function toggleDischarge() { currentDischarged = !currentDischarged; updateDischargeBtn(); }
         function toggleFullScreen() { const fsEl = document.getElementById('fullscreenOverlay'); fsEl.classList.toggle('hidden'); if(!fsEl.classList.contains('hidden')) { const editor = document.getElementById('fullscreenEditor'); editor.focus(); } }
         
-        function renderDischarged() {
-            const list = document.getElementById('dischargedList'); list.innerHTML = "";
-            const archived = records.filter(r => r.is_discharged);
-            if (archived.length === 0) { list.innerHTML = "<div class='col-span-full text-center p-10 text-slate-400 italic'>No archived records found.</div>"; return; }
-            archived.forEach(r => {
-                const dateStr = r.updated_at ? new Date(r.updated_at).toLocaleDateString() : 'N/A';
-                
-                // FIX: Visual selection indicator
-                const isSelected = selectedIds.has(r.id);
-                const selClass = isSelected ? 'ring-2 ring-medical-500 border-medical-500 bg-medical-50' : 'border-slate-200 hover:border-medical-400';
-
-                // FIX: Use handleItemClick instead of openEditor
-                list.innerHTML += `
-                <div class="bg-white p-4 rounded-xl border shadow-sm flex justify-between items-center cursor-pointer transition ${selClass}" onclick="handleItemClick('${r.id}', null)">
-                    <div>
-                        <h4 class="font-bold text-slate-800">${r.name}</h4>
-                        <p class="text-xs text-slate-500">HN: ${r.hn} • Ward: ${r.ward}</p>
-                        <p class="text-[10px] text-slate-400 mt-1">Archived: ${dateStr}</p>
-                    </div>
-                    <button onclick="restorePatient('${r.id}', event)" class="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-200 transition">Restore</button>
-                </div>`;
-            });
-        }
-        
         async function restorePatient(id, event) {
             event.stopPropagation();
             const r = records.find(x => x.id === id);
             const newBed = prompt(`Restore ${r.name} to Bed Number:`, r.bed_number || 1);
             if (!newBed) return;
-            const conflict = records.find(p => !p.is_discharged && p.ward === currentWard && p.bed_number == newBed);
-            if (conflict) { alert(`Bed ${newBed} occupied by ${conflict.name}. Restore cancelled.`); return; }
-            
-            // Local Update
             r.is_discharged = false; r.bed_number = newBed; r.updated_at = new Date().toISOString();
-            
-            // Backend Update
             const p = { id: r.id, is_discharged: false, ward: r.ward, bed_number: newBed, hn: r.hn, name: r.name, details: r.details, consult_units: JSON.stringify(r.consult_units), color_id: r.color_id, todo_list: JSON.stringify(r.todo_list) };
             await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'save', db: r.owner || DB_NAME, password: PASSWORD, requester: DB_NAME, ...p}) });
-            
             renderView();
         }
-        
         async function deleteWard(wardName) {
             const pwd = prompt(`WARNING: Deleting ward "${wardName}" will erase ALL associated patient records.\nEnter your password to confirm:`);
             if (!pwd) return;
@@ -754,13 +794,10 @@
             if (json.status === 'success') {
                 const toDelete = records.filter(r => r.ward === wardName).map(r => r.id);
                 records = records.filter(r => r.ward !== wardName);
-                wards.delete(wardName);
-                if (currentWard === wardName) currentWard = "General Ward";
-                changeWard();
+                wards.delete(wardName); if (currentWard === wardName) currentWard = "General Ward"; changeWard();
                 if(toDelete.length > 0) { await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'delete', db: DB_NAME, password: pwd, ids: toDelete}) }); }
             } else { alert("Incorrect Password"); }
         }
-        
         document.getElementById('fullscreenEditor').addEventListener('input', function() { syncDetails(this); });
     </script>
 </body>
