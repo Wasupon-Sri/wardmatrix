@@ -30,15 +30,15 @@
         .role-radio:checked + div { background-color: #3b82f6; color: white; border-color: #3b82f6; }
         .role-radio:disabled + div { background-color: #334155; color: #64748b; border-color: #334155; opacity: 0.5; cursor: not-allowed; }
         
-        /* Auth Toggle Slider */
-        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #475569; transition: .4s; border-radius: 34px; }
-        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: #f97316; }
-        input:checked + .slider:before { transform: translateX(20px); }
+        @keyframes spin-forced { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .spin-active { animation: spin-forced 1s linear infinite; }
         
-        /* Admin Elements */
+        /* FIX: White Cursor for Dark Portal Background */
+        input, textarea, [contenteditable="true"] {
+            caret-color: white !important;
+            cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32' stroke='white' stroke-width='3' stroke-linecap='round'><path d='M16 4v24M11 4h10M11 28h10'/></svg>") 16 16, text !important;
+        }
+
         .admin-element { display: none !important; }
         .admin-mode .admin-element { display: flex !important; }
     </style>
@@ -94,11 +94,6 @@
                         </label>
                     </div>
                 </div>
-
-                <div id="chiefAuthFields" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4 bg-orange-900/10 p-4 rounded-xl border border-orange-500/30">
-                    <input type="text" id="chiefUsername" placeholder="Your Chief Username" class="bg-slate-900/50 border border-slate-600 rounded-xl p-3 outline-none focus:border-orange-500 text-white">
-                    <input type="password" id="chiefPassword" placeholder="Your Password" class="bg-slate-900/50 border border-slate-600 rounded-xl p-3 outline-none focus:border-orange-500 text-white">
-                </div>
                 
                 <div class="flex justify-between items-center mt-2">
                     <p class="text-xs text-slate-500">Note: User will set their password upon first login.</p>
@@ -107,42 +102,34 @@
             </div>
         </div>
 
-        <div id="loader" class="text-center py-32"><i class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-500"></i></div>
+        <div id="loader" class="text-center py-32"><i class="fa-solid fa-circle-notch spin-active text-4xl text-blue-500"></i></div>
         <div id="dbGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 hidden pb-10"></div>
     </div>
 
-    <footer class="text-center py-6 text-slate-600 text-xs">System v4.5 • Developed for Rajavithi Hospital</footer>
+    <footer class="text-center py-6 text-slate-600 text-xs">System v5.1 • Developed for Rajavithi Hospital</footer>
 
     <!-- ADMIN LOGIN MODAL -->
     <div id="adminModal" class="fixed inset-0 bg-slate-950/90 z-[100] hidden flex items-center justify-center backdrop-blur-sm">
         <div class="bg-slate-900 p-6 rounded-2xl border border-slate-700 shadow-2xl w-96 relative">
             <button onclick="closeAdminAuth()" class="absolute top-4 right-4 text-slate-500 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
-            
             <div class="text-center mb-6">
                 <div class="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-xl text-white border border-slate-600"><i class="fa-solid fa-user-shield"></i></div>
                 <h3 class="text-white font-bold text-lg">Account Management</h3>
                 <p class="text-slate-400 text-xs">Login to Manage Accounts</p>
             </div>
-
-            <!-- TABS -->
             <div class="flex bg-slate-800 p-1 rounded-lg mb-6">
                 <button onclick="switchAuthTab('master')" id="tabMaster" class="flex-1 py-2 text-xs font-bold rounded-md bg-blue-600 text-white transition">Master Key</button>
                 <button onclick="switchAuthTab('chief')" id="tabChief" class="flex-1 py-2 text-xs font-bold rounded-md text-slate-400 hover:text-white transition">Chief Login</button>
             </div>
-
-            <!-- MASTER AUTH -->
             <div id="authMaster" class="space-y-4">
                 <p class="text-xs text-slate-500 text-center mb-2">Full access to manage Chiefs & Residents</p>
                 <input type="password" id="inputMasterKey" class="w-full bg-slate-950 border border-slate-600 rounded-xl px-4 py-3 text-center text-white focus:border-blue-500 outline-none transition tracking-widest" placeholder="Enter Master Key">
             </div>
-
-            <!-- CHIEF AUTH -->
             <div id="authChief" class="space-y-3 hidden">
                 <p class="text-xs text-slate-500 text-center mb-2">Limited access to manage Residents only</p>
                 <input type="text" id="inputChiefUser" class="w-full bg-slate-950 border border-slate-600 rounded-xl px-4 py-3 text-sm text-white focus:border-orange-500 outline-none transition" placeholder="Chief Username">
                 <input type="password" id="inputChiefPass" class="w-full bg-slate-950 border border-slate-600 rounded-xl px-4 py-3 text-sm text-white focus:border-orange-500 outline-none transition" placeholder="Chief Password">
             </div>
-
             <button onclick="checkAdmin()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold transition shadow-lg mt-6">Unlock Mode</button>
         </div>
     </div>
@@ -156,17 +143,14 @@
                 <h3 class="text-white font-bold text-lg">Confirm Deletion</h3>
                 <p class="text-slate-400 text-xs mt-1">Target: <span id="delTargetName" class="text-white font-mono"></span></p>
             </div>
-            
             <div class="space-y-3">
                 <input type="password" id="delMasterKey" class="w-full bg-slate-950 border border-slate-600 rounded-lg px-3 py-3 text-center text-white focus:border-blue-500 outline-none transition" placeholder="Master Key">
             </div>
-
             <div id="delChiefSection" class="hidden mt-4 pt-4 border-t border-slate-700">
                 <p class="text-center text-slate-500 text-xs font-bold uppercase mb-3">- OR USE CHIEF ACCOUNT -</p>
                 <input type="text" id="delChiefUser" class="w-full bg-slate-950 border border-slate-600 rounded-lg px-3 py-2 mb-2 text-sm text-white focus:border-orange-500 outline-none" placeholder="Chief Username">
                 <input type="password" id="delChiefPwd" class="w-full bg-slate-950 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:border-orange-500 outline-none" placeholder="Chief Password">
             </div>
-
             <button onclick="submitDelete()" class="w-full bg-rose-600 hover:bg-rose-500 text-white py-3 rounded-lg font-bold transition shadow-lg mt-6">Confirm Delete</button>
         </div>
     </div>
@@ -178,7 +162,7 @@
         let currentRole = 'all'; 
         let allUsers = [];
         let isEditMode = false;
-        let adminSession = null; // { type: 'master'|'chief', key: '...', user: '...', pass: '...' }
+        let adminSession = null;
         let pendingDeleteTarget = null;
         let pendingDeleteRole = null;
 
@@ -205,7 +189,6 @@
 
         function toggleAdminMode() {
             if (adminSession) {
-                // Logout
                 adminSession = null;
                 isEditMode = false;
                 document.body.classList.remove('admin-mode');
@@ -267,26 +250,22 @@
                 const json = await res.json();
                 
                 if (json.status === 'success') {
-                    // Check logic for Chief
                     if (!isMaster && json.role !== 'chief') {
                         alert("Access Denied: This account is not a Chief.");
                         btn.innerText = "Unlock Mode";
                         return;
                     }
 
-                    // Success
                     adminSession = sessionData;
                     isEditMode = true;
                     document.body.classList.add('admin-mode');
                     document.getElementById('adminModal').classList.add('hidden');
                     document.getElementById('adminModal').classList.remove('flex');
                     
-                    // Visual Updates
                     const toggleBtn = document.getElementById('btnAdminToggle');
                     toggleBtn.innerHTML = '<i class="fa-solid fa-lock-open"></i>';
                     toggleBtn.className = "glass-panel w-12 rounded-xl flex items-center justify-center text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 transition shadow-glow";
                     
-                    // Update Create Panel Badge
                     const badge = document.getElementById('createAuthBadge');
                     if (isMaster) {
                         badge.innerText = "MASTER ADMIN";
@@ -295,9 +274,8 @@
                     } else {
                         badge.innerText = `CHIEF: ${sessionData.user}`;
                         badge.className = "px-3 py-1 rounded bg-orange-900/50 text-xs font-bold text-orange-400 border border-orange-500/30";
-                        document.getElementById('radioChief').disabled = true; // Chiefs can't create Chiefs
+                        document.getElementById('radioChief').disabled = true; 
                     }
-
                     renderGrid();
                 } else {
                     alert("Invalid Credentials");
@@ -321,7 +299,6 @@
         function renderGrid() {
             document.getElementById('loader').classList.add('hidden'); const grid = document.getElementById('dbGrid'); grid.classList.remove('hidden');
             
-            // Filter Logic
             const filteredUsers = currentRole === 'all' ? allUsers : allUsers.filter(u => u.role === currentRole);
             
             if (filteredUsers.length === 0) { grid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-500 italic">No databases found. Create one above.</div>`; return; }
@@ -329,7 +306,6 @@
             grid.innerHTML = filteredUsers.map(u => {
                 const isChief = u.role === 'chief'; const initial = u.name.charAt(0).toUpperCase(); const icon = isChief ? 'fa-user-tie' : 'fa-user-doctor';
                 
-                // Permission Check
                 let showDelete = false;
                 if (adminSession) {
                     if (adminSession.type === 'master') showDelete = true;
@@ -351,11 +327,8 @@
             if(isEditMode) document.body.classList.add('admin-mode');
         }
 
-        // Direct App Entry (Skips Password Modal here, App.html handles it)
         function enterApp(dbName, role) { 
             if(!isEditMode) {
-                // Directly redirect to the app. 
-                // The App itself (app.html) will check if password is set or required.
                 window.location.href = `${APP_URL}?db=${encodeURIComponent(dbName)}&role=${role}`;
             }
         }
@@ -363,14 +336,12 @@
         async function createDB() {
             if(!adminSession) return;
             const name = document.getElementById('newDbName').value.trim(); 
-            // Password removed from UI
             const role = document.querySelector('input[name="newRole"]:checked').value;
             
             if(!name) return alert("Please enter a username");
             
             let payload = { action: 'admin_create_user', dbName: name, newPassword: "", userRole: role };
 
-            // Attach Creds automatically from session
             if (adminSession.type === 'master') {
                 payload.adminKey = adminSession.key;
             } else {
@@ -378,7 +349,7 @@
                 payload.creatorPwd = adminSession.pass;
             }
 
-            const btn = event.target; const originalText = btn.innerHTML; btn.innerHTML = "<i class='fa-solid fa-circle-notch fa-spin'></i> Creating..."; btn.disabled = true;
+            const btn = event.target; const originalText = btn.innerHTML; btn.innerHTML = "<i class='fa-solid fa-circle-notch spin-active'></i> Creating..."; btn.disabled = true;
             try {
                 const res = await fetch(API_URL, { method: 'POST', headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify(payload)});
                 const json = await res.json();
@@ -388,26 +359,6 @@
                     toggleCreate(); loadDatabases(); 
                 } else { alert(json.error || "Creation failed"); }
             } catch(e) { alert("Network error"); } finally { btn.innerHTML = originalText; btn.disabled = false; }
-        }
-
-        function promptDelete(name, role) {
-            pendingDeleteTarget = name;
-            pendingDeleteRole = role;
-            
-            document.getElementById('delTargetName').innerText = name;
-            document.getElementById('delMasterKey').value = '';
-            document.getElementById('delChiefUser').value = '';
-            document.getElementById('delChiefPwd').value = '';
-            
-            const chiefSection = document.getElementById('delChiefSection');
-            if (role === 'chief') {
-                chiefSection.classList.add('hidden');
-            } else {
-                chiefSection.classList.remove('hidden');
-            }
-            
-            document.getElementById('deleteModal').classList.remove('hidden');
-            document.getElementById('deleteModal').classList.add('flex');
         }
 
         async function submitDelete() {
